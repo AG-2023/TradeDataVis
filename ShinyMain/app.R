@@ -1,9 +1,8 @@
 # 20171004
-# Updated 2017xxxx
+# Updated 2021xxxx by Ethan Linke
 # R Shiny script for web based user interface with PGSQL database.
 # Written by Louis Tsiattalou for TradeDataVis project.
-# 2021 Updates by Ethan Linke
-# Github: https://github.com/LouisTsiattalou/TradeDataVis
+# Github: https://github.com/FoodStandardsAgency/TradeDataVis
 
 # SCRIPT START ###############################################################
 
@@ -114,7 +113,7 @@ comcodelong <- function(short) {
 # Load Prerequisite Static data - Ports, Comcodes, etc. ======================
 # Use pool instead of dbConnect
 # setwd("C:/Users/ltsiattalou/Documents/R/ImportTool/ShinyMain/")
-# setwd("C:/Users/901280/OneDrive - Food Standards Agency/Documents/trade data vis app/New version")
+# setwd("C:/Users/901280/OneDrive - Food Standards Agency/Documents/trade data vis app/New New version")
 
 dbenv <- read_delim("ATT52349.env", delim = "=", col_names = FALSE, trim_ws = TRUE)
 
@@ -146,6 +145,8 @@ allfoodfeed <- dbGetQuery(tradedata, "SELECT * FROM allfoodfeed")
 
 #Adding a row which contains the blank ports so these also get queried from the database
 portcode<-rbind(portcode,c("Unknown Port", "   ",NA,NA,NA, "Unknown Region"))
+portcode <- rbind(portcode, c("EU Trade - Port Unknown", "EU UNK",NA,NA,NA, "Unknown Region"))
+countrycode <- rbind(countrycode, c("EU Dispatch - Unknown Origin", "UNK EU", TRUE, TRUE))
 
 # Order Ascending
 portcode <- portcode %>% arrange(portname)
@@ -171,6 +172,7 @@ names(desclookup) <- c(portcode$portcode,countrycode$countrycode,comcode$commodi
 
 desclookup <- data.frame(keyName=names(desclookup), value=desclookup, row.names=NULL, stringsAsFactors = FALSE)
 desclookup <- desclookup[desclookup$value != "",]
+#desclookup$keyName[desclookup$value == "EU Dispatch - Unknown Origin"] <- "UNK EU"
 
 
 #desclookup <-rbind(desclookup,data.frame(keyName="04090000",value="04090000 - description"))
@@ -184,24 +186,7 @@ comcode_2 <- comcode[nchar(comcode$commoditycode) == 2,]
 comcode_4 <- comcode[nchar(comcode$commoditycode) == 4,]
 comcode_6 <- comcode[nchar(comcode$commoditycode) == 6,]
 comcode_8 <- comcode[nchar(comcode$commoditycode) == 8,] 
-# comcode_8 <- comcode_8 %>%
-#   filter(commoditycode != "11042298" & 
-#          commoditycode != "11042903" & 
-#          commoditycode != "11042909" &
-#          commoditycode != "44072961" &
-#          commoditycode != "44072968" &
-#          commoditycode != "58012400" &
-#          commoditycode != "58013400" )
-# 
 
-# comcode_8_filt = comcode_8 %>%
-#   filter(commoditycode == "11042298" | 
-#            commoditycode == "11042903" | 
-#            commoditycode == "11042909" |
-#            commoditycode == "44072961" |
-#            commoditycode == "44072968" |
-#            commoditycode == "58012400" |
-#            commoditycode == "58013400" )
 
 
 
@@ -248,7 +233,7 @@ options(spinner.color="#0dc5c1")
 ui <- navbarPage(theme = shinytheme("flatly"), inverse = TRUE, 
                  
       # Navbar Title           
-      title = "UK Trade Data Visualisation",           
+      title = ( "UK Trade Data Visualisation"),           
       
 
   # WELCOME PAGE --------------------------------------------------------------
@@ -260,14 +245,17 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                 function gtag(){dataLayer.push(arguments);}
                 gtag('js', new Date());
                 gtag('config', 'UA-147223602-1');
-               </script> ")), 
-  fluidRow(column(12,
+               </script> ")),
+#div(img(src = "FSA logo.png", height = 80, width = 160), style="float: right;"),
+  #fluidRow(column(10,
            tags$h1("Welcome to the Trade Data Visualisation Application!"),
+           # column(6,
+           #        div(img(src = "FSA logo.png", height = 80, width = 160), style="float: right;")),
            tags$hr(),
            HTML("<div class=\"alert alert-dismissible alert-success\">
                     <strong>Welcome!</strong> This is the Trade Data Visualisation app. Please take the time to read through this page to familiarise yourself with the functionality of the app. If you encounter any bugs/crashes, please let us know so we can fix them by emailing Tim.Johnston@food.gov.uk.<br>
                 Please only use in Chrome. Internet Explorer and Microsoft Edge are unsupported.
-                </div>")),
+                </div>"),
            tags$hr(),
            column(8,
            tags$h3("Introduction"),
@@ -279,7 +267,7 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                            tags$li("Bar Charts by Comcode/Country/Port - these show the proportion of the imports/exports contributed by each country, commodity and port.")
                        )
                   ),
-           tags$p("Please note that port data is not available for EU imports. Data can also be downlaoded for further analysis using this application."),
+           tags$p("Data can also be downloaded for further analysis using this application.  Please note that port data is not available for EU imports or for EU exports before 2021.  Additionally, number of consignments data is only available for EU trade before 2021."),
            tags$hr()),
            column(4,
                   HTML("<div class=\"alert alert-dismissible alert-success\">
@@ -291,12 +279,12 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                 </div>")),
            column(12,
            tags$h3("How to Use the Application"),
-           tags$p("To use the application, first navigate to the query panel tab - this is where you make your selections. There are two options for querying data: either selecting by commodity code or selecting a filter for food/feed. To search by commodity code, use the boxes to input commodity codes at the level of detail you require (2 - 8 digits). You can search for a product in the commodity code search table at the bottom of the page. If you would prefer to search using a food/feed filter please select the checkbox under 'Filter query'. This will allow you to use the buttons to select: all food & feed, just food, or just feed, as well as all food of non-animal origin (FNAO) & all products of animal origin (POAO), just FNAO or just POAO.  Please note that these lists have been compiled by the FSA and are not official data sources, and some commodity codes are classified as both food/feed and POAO/FNAO. To see this list of food/feed commodity codes, please download using the button below."),
-           tags$p("Once you know what you're looking for, make your selections in the dropdown boxes and hit the ", tags$i("Run Query"), " button. This will load all of the matching data from the database into the app. You will need to open the ", tags$i("Non-EU Trade"), "and ", tags$i("EU Trade"), " tabs to see the visualisations and download the query data. Little notifications in the bottom right will alert you to progress, and let you know if data was found for your selections."),
+           tags$p("To use the application, first navigate to the query panel tab - this is where you make your selections. There are two options for querying data: either selecting by commodity code or selecting a filter for food/feed. To search by commodity code, use the boxes to input commodity codes at the level of detail you require (2 - 8 digits). You can search for a product in the commodity code search table at the bottom of the page. If you would prefer to search using a food/feed filter please select the 'By Commodity Type' tab. This will allow you to use the buttons to select: all food & feed, just food, or just feed, as well as all food of non-animal origin (FNAO) & all products of animal origin (POAO), just FNAO or just POAO.  Please note that these lists have been compiled by the FSA and are not official data sources, and some commodity codes are classified as both food/feed and POAO/FNAO. To see this list of food/feed commodity codes, please download using the button below."),
+           tags$p("Once you know what you're looking for, make your selections in the dropdown boxes and hit the ", tags$i("Run Query"), " button. This will load all of the matching data from the database into the app. You will need to open the ", tags$i("Results Panel"), "tab to see the visualisations and download the query data. Little notifications in the bottom right will alert you to progress, and let you know if data was found for your selections."),
            tags$p("Once the visualisations show up, you will see:",
                   tags$ul(
                            tags$li("A mini Commodity Code Lookup table, showing", tags$i("only the commodity codes currently in play.")),
-                           tags$li("A row containing a Date Slider and a Unit Selector. This will enable you to filter the query you've already made to show the appropriate unit and enable you to see the evolution of trade data activity in time by clicking and dragging the date slider."),
+                           tags$li("A row containing a Date Slider, Unit Selector and an option to choose between EU and non-EU data. This will enable you to filter the query you've already made to show the appropriate unit and enable you to see the evolution of relevant trade data activity in time by clicking and dragging the date slider."),
                            tags$li("A tab selection panel enabling you to switch between the interactive visualisations."),
                            tags$li("A Download Query Data Button, which downloads the results of the unfiltered query you just made by clicking \"Run Query\"."),
                            tags$li("A Download Commodity Codes Button, which allows you to download a list of all the commodity codes currently in play. ")
@@ -327,7 +315,7 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                   tags$br(),
            tags$hr(),
            tags$h3("About"),
-           tags$p("Github:", tags$a(href = "https://github.com/fsa-analytics/TradeDataVis", "FSA Analytics Github"),
+           tags$p("Github:", tags$a(href = "https://github.com/FoodStandardsAgency/TradeDataVis", "FSA Analytics Github"),
                   #tags$br(),
                   #"Version Number:", "1.0.2",
                   tags$br(),
@@ -336,12 +324,12 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                   "Contact:", tags$a(href = "mailto:tim.johnston@food.gov.uk", "Tim Johnston")
                   ),
            tags$p("This application was developed by Louis Tsiattalou (Operational Research Fast Stream) at the Food Standards Agency; with infrastructure support from Arthur Lugtigheid (Data Science) and Tim Johnston (Operational Research). QA was performed by Harry Grantham-Hill (Operational Research). Updates were implemented by Anna Webb (Operational Research Fast Stream) and Ethan Linke (Operational Research Fast Stream).")
-           ))),
+           )),
   
   # QUERY PARAMETERS-----------------------------------------------------
   
   tabPanel("Query Panel",
-    # Query Options
+      # Query Options
     fluidRow(      
         
     # Define date selectors and four cascading inputs - don't allow "All" on 2-digit comcode
@@ -352,11 +340,11 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                        choices=dates),
         selectizeInput("countryselect", "Country:",
                        selected = "All",
-                       choices=list(`All` = c("All", "All EU",  "All Non-EU"),
+                       choices=list("All", "All EU",  "All Non-EU",
                                     `Non-EU` = noneucountrycode$countryname,
                                     `EU` = eucountrycode$countryname),
                        options = list(maxItems = 20)),
-        selectizeInput("portselect", "Port (Applies to Non-EU Only):",
+        selectizeInput("portselect", "Port:",
                        selected = "All",
                        choices=list(`All` = "All",
                                  `Region` = c("England", "Scotland", "Wales", "Northern Ireland", "Channel Islands and Isle of Man", "Unknown Region"),
@@ -382,6 +370,10 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
         
         ),
       column(9,
+             tabsetPanel(id="byCommodityTab",
+               tabPanel("By Commodity Code",
+                        br(),
+        #checkboxInput("comcodefilter","Please select this box to query by commodity code.",width = "900px", value=TRUE),
         selectizeInput("comcode2", "2-digit Commodity Code:",
                        selected = "All",
                        width = "100%",
@@ -402,19 +394,22 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                        width = "100%",
                        choices=c("All", comcodelong(comcode_8$commoditycode)),
                        options = list(maxItems = 20)),
-        hr(),
-        tags$h4("Filter query"),
-        checkboxInput("foodfeedfilter","Please select this box to query using a food/feed filter instead of using the commodity code selection.",width = "900px"),
-        radioButtons("foodorfeed", label = "Select food and/ or feed filter", inline = TRUE,
+        hr()),
+              tabPanel("By Commodity Type",
+                       br(),
+        #tags$h4("Filter query"),
+       # checkboxInput("foodfeedfilter","Please select this box to query by commodity type.",width = "900px"),
+        radioButtons("foodorfeed", label = "Select Food and/or Feed:", inline = TRUE,
                      choices = c("All Food & Feed","Food", "Feed")),
-        radioButtons("poaoorfnao", label = "Select all products, FNAO products, or POAO products", inline = TRUE,
+        radioButtons("poaoorfnao", label = "Select FNAO Products and/or POAO Products:", inline = TRUE,
                      choices = c("All FNAO & POAO","FNAO", "POAO")),
-        hr(),
+        hr())),
+       br(),
         tags$h4("Advanced options"),
         "These are set to default values and should be used only by those familiar with trade data.",
         radioButtons("tradeselect",label = "Select which type of trade data you would like. Note: Special trade includes all imports that enter the UK excluding re-exports. This matches Defra statistics.", inline= TRUE,
                      choices = c("All data", "Special trade", "General trade"), selected = "Special trade"),
-        radioButtons("codorcooselect", label = "For non-EU imports, select whether you would like to use the country of dispatch or the country of origin.", inline = TRUE,
+        radioButtons("codorcooselect", label = "Select whether you would like to use the country of dispatch or the country of origin for imports. Please note that country of origin data is not available for consignments imported from the EU.", inline = TRUE,
                      choices = c("Country of Origin", "Country of Dispatch"), selected = "Country of Dispatch")
       
       )
@@ -423,169 +418,118 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
     dataTableOutput("ComcodeLookup") %>% withSpinner(type=6)
     ),
   
-  # NON-EU TRADE --------------------------------------------------------------
+  # QUERY RESULTS ---------------------------------------------------------
+
+  tabPanel("Results Panel",
+               # Head Styles
+               tags$head(tags$style(HTML("
+                 .progress-striped .bar {
+                                         background-color: #149bdf;
+                                         background-image: -webkit-gradient(linear, 0 100%, 100% 0, color-stop(0.25, rgba(255, 255, 255, 0.6)), color-stop(0.25, transparent), color-stop(0.5, transparent), color-stop(0.5, rgba(255, 255, 255, 0.6)), color-stop(0.75, rgba(255, 255, 255, 0.6)), color-stop(0.75, transparent), to(transparent));
+                                         background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
+                                         background-image: -moz-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
+                                         background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
+                                         background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
+                                         -webkit-background-size: 40px 40px;
+                                         -moz-background-size: 40px 40px;
+                                         -o-background-size: 40px 40px;
+                                         background-size: 40px 40px;
+                                         }
+                                         "))),
+              uiOutput("impexpHeader"),
+
+               # Create comcode legend
+               fluidRow(
+                 column(12,
+                   dataTableOutput("ComcodeLegend")
+                 ),
+                 hr()
+               ),
+
+               # Create slider/unit bar
+               fluidRow(
+                 column(2,
+                   tags$label("Select Month:"),
+                   checkboxInput("dateSliderAll", label = "All", value = TRUE)
+                        ),
+                 column(4,
+                   shinyjs::disabled(sliderTextInput("dateSlider", label = NULL, grid = TRUE, force_edges = TRUE,
+                                              choices = c(dates)))
+                        ),
+                 column(6,
+                   tags$label("Select EU or Non-EU:"),
+                   radioButtons("EUNonEUSelect", label = NULL, inline = TRUE,
+                                choices = c("All", "EU", "Non-EU"), selected = "All"))
+               ),
   
-  tabPanel("Non-EU Trade",
-    # Head Styles
-    tags$head(tags$style(HTML("
-      .progress-striped .bar {
-                              background-color: #149bdf;
-                              background-image: -webkit-gradient(linear, 0 100%, 100% 0, color-stop(0.25, rgba(255, 255, 255, 0.6)), color-stop(0.25, transparent), color-stop(0.5, transparent), color-stop(0.5, rgba(255, 255, 255, 0.6)), color-stop(0.75, rgba(255, 255, 255, 0.6)), color-stop(0.75, transparent), to(transparent));
-                              background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              background-image: -moz-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              -webkit-background-size: 40px 40px;
-                              -moz-background-size: 40px 40px;
-                              -o-background-size: 40px 40px;
-                              background-size: 40px 40px;
-                              }
-                              "))),
-    
-    # Create comcode legend
-    fluidRow(
-      column(12,
-        dataTableOutput("ComcodeLegend")
-      ),
-      hr()
-    ),
-    
-    # Create slider/unit bar
-    fluidRow(
-      column(2,
-        tags$label("Select Month:"),     
-        checkboxInput("dateSliderAll", label = "All", value = TRUE)
+           
+              fluidRow(
+                column(6, 
+                       br(),
+                  textOutput("NoDataMessage"),
+                       tags$head(tags$style("#NoDataMessage{
+                                            font-size: 18px;
+                                            color: red;}"))),
+                column(6,
+                  tags$label("Select Units:"),
+                  radioButtons("unitSelect", label = NULL, inline = TRUE,
+                                choices = c("Price (GBP)", "Weight (KG)", "Price Per Kilo (GBP/KG)", "Number of Consignments")))
+              ),
+                
+              fluidRow(
+                column(6),
+                column(6, 
+                       textOutput("ConsignmentsMessage"),
+                       tags$head(tags$style("#ConsignmentsMessage{
+                                            font-size: 13px;}")))
+              ),
+               # Create a spot for the plots
+               fluidRow(
+                 column(12,
+                   tabsetPanel(
+                     tabPanel("FLOW",
+                       tabsetPanel(
+                         tabPanel("Full", 
+                                  # br(),
+                                  # fluidRow(
+                                  # column(9),column(3,
+                                  # sliderInput("fontsizeSelect", "Select Font Size:", min = 1, max = 10, value = 3, width = 200))),
+                                  sankeyNetworkOutput(outputId = "sankeyTrade") %>% withSpinner(type=6)),
+                         tabPanel("Country & Port Only", sankeyNetworkOutput(outputId = "pcSankeyTrade") %>% withSpinner(type=6))
+                       )
+                     ),
+                     tabPanel("MAP", leafletOutput(outputId = "worldMap", height = 600) %>% withSpinner(type=6)),
+                     tabPanel("TIME SERIES",
+                       tabsetPanel(
+                         tabPanel("By Commodity Code", plotlyOutput(outputId = "tsByComcode") %>% withSpinner(type=6),#Test image download button
+                                  fluidRow(
+                                    column(10)#,
+                                    #column(2, downloadButton("downloadplotnoneu", "Download plot"))
+                                  )),
+                         tabPanel("By Country", plotlyOutput(outputId = "tsByCountry") %>% withSpinner(type=6)),
+                         tabPanel("By Port", plotlyOutput(outputId = "tsByPort") %>% withSpinner(type=6))
+                       )
+                     )
+                   )
+                 )
+               ),
+
+               # Create a spot for the download button
+               fluidRow(
+                 column(2, downloadButton("dataDownload", "Download Query Data"))
+               ),
+               br(),
+
+               # Create a spot for the commodity code download button
+               fluidRow(
+                 column(2, downloadButton("noneucomcodedownload", "Download Commodity Codes"))
+               ),
+               br()
+
+
              ),
-      column(4,
-        shinyjs::disabled(sliderTextInput("dateSlider", label = NULL, grid = TRUE, force_edges = TRUE,
-                                   choices = c(dates)))
-             ),
-      column(6,
-        tags$label("Select Units:"),
-        radioButtons("unitSelect", label = NULL, inline = TRUE,
-                     choices = c("Price (GBP)", "Weight (KG)", "Price Per Kilo (GBP/KG)")))
-    ),
-    
-    # Create a spot for the plots
-    fluidRow(
-      column(12,
-        tabsetPanel(
-          tabPanel("FLOW",
-            tabsetPanel(
-              tabPanel("Full", sankeyNetworkOutput(outputId = "sankeyTrade") %>% withSpinner(type=6)), 
-              tabPanel("Country & Port Only", sankeyNetworkOutput(outputId = "pcSankeyTrade") %>% withSpinner(type=6))
-            )
-          ),
-          tabPanel("MAP", leafletOutput(outputId = "worldMap", height = 600) %>% withSpinner(type=6)),
-          tabPanel("TIME SERIES",
-            tabsetPanel(
-              tabPanel("By Commodity Code", plotlyOutput(outputId = "tsByComcode") %>% withSpinner(type=6),#Test image download button
-                       fluidRow(
-                         column(10)#,
-                         #column(2, downloadButton("downloadplotnoneu", "Download plot"))
-                       )),
-              tabPanel("By Country", plotlyOutput(outputId = "tsByCountry") %>% withSpinner(type=6)),
-              tabPanel("By Port", plotlyOutput(outputId = "tsByPort") %>% withSpinner(type=6))
-            )
-          )
-        )
-      )
-    ),
-    
-    # Create a spot for the download button
-    fluidRow(
-      column(2, downloadButton("dataDownload", "Download Query Data"))
-    ),
-    br(),
-    
-    # Create a spot for the commodity code download button
-    fluidRow(
-      column(2, downloadButton("noneucomcodedownload", "Download Commodity Codes"))
-    ),
-    br()
-    
-    
-  ),
-  
-  # EU TRADE -------------------------------------------------------------------
-  
-  tabPanel("EU Trade",
-    # Head Styles
-    tags$head(tags$style(HTML("
-      .progress-striped .bar {
-                              background-color: #149bdf;
-                              background-image: -webkit-gradient(linear, 0 100%, 100% 0, color-stop(0.25, rgba(255, 255, 255, 0.6)), color-stop(0.25, transparent), color-stop(0.5, transparent), color-stop(0.5, rgba(255, 255, 255, 0.6)), color-stop(0.75, rgba(255, 255, 255, 0.6)), color-stop(0.75, transparent), to(transparent));
-                              background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              background-image: -moz-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.6) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 75%, transparent);
-                              -webkit-background-size: 40px 40px;
-                              -moz-background-size: 40px 40px;
-                              -o-background-size: 40px 40px;
-                              background-size: 40px 40px;
-                              }
-                              "))),
-    
-    # Create comcode legend
-    fluidRow(
-      column(12,
-        dataTableOutput("euComcodeLegend")
-      ),
-      hr()
-    ),
-    
-    # Create slider/unit bar
-    fluidRow(
-      column(2,
-        tags$label("Select Month:"),     
-        checkboxInput("eudateSliderAll", label = "All", value = TRUE)
-             ),
-      column(4,
-        shinyjs::disabled(sliderTextInput("eudateSlider", label = NULL, grid = TRUE, force_edges = TRUE,
-                                   choices = c(dates)))
-             ),
-      column(6,
-        tags$label("Select Units:"),
-        radioButtons("euunitSelect", label = NULL, inline = TRUE,
-#                     choices = c("Price (GBP)", "Weight (KG)", "Price Per Kilo (GBP/KG)", "Number of Consignments")))
-                      choices = c("Price (GBP)", "Estimated Weight (KG)", "Price Per Kilo (GBP/KG)", "Number of Consignments")))
 
-#                     choices = c("Price (GBP)","Number of Consignments")))
-    ),
-    
-    # Create a spot for the plots
-    fluidRow(
-      column(12,
-        tabsetPanel(
-          tabPanel("FLOW", sankeyNetworkOutput(outputId = "eusankeyTrade") %>% withSpinner(type=6)), 
-          tabPanel("MAP", leafletOutput(outputId = "euworldMap", height = 600) %>% withSpinner(type=6)),
-          tabPanel("TIME SERIES",
-            tabsetPanel(
-              tabPanel("By Commodity Code", plotlyOutput(outputId = "eutsByComcode") %>% withSpinner(type=6)),
-              tabPanel("By Country", plotlyOutput(outputId = "eutsByCountry") %>% withSpinner(type=6))
-            )
-          )
-        )
-      )
-    ),
-    
-    # Create a spot for the download button
-    fluidRow(
-      column(2, downloadButton("euDataDownload", "Download Query Data"))
-    ),
-br(),
-  
-# Create a spot for the commodity code download button
-  fluidRow(
-   column(2, downloadButton("eucomcodedownload", "Download Commodity Codes"))
-    ),
-br()
-
-
-  ),
-
-
-# Advanced Download   --------------------------------------------------------------
+  # Advanced Download   --------------------------------------------------------------
 
 
 tabPanel("Advanced Download",
@@ -605,7 +549,7 @@ tabPanel("Advanced Download",
                                    }
                                    "))),
          "This tab allows you to choose more advanced options for how you download the data from your query.",
-         tags$h3("Non-EU Trade"),
+       #  tags$h3("Non-EU Trade"),
          "Please choose the options you would like:",
          checkboxInput("noneumonthsum", "Sum over months"),
          checkboxInput("noneucountrysum", "Sum over countries"),
@@ -614,21 +558,21 @@ tabPanel("Advanced Download",
                       selected = "8-digit",
                       choices = c("2-digit","4-digit","6-digit","8-digit")),
          fluidRow(
-           column(10),
+         #  column(10),
            column(2, downloadButton("noneuadvancedownload", "Download data"))
          ),
          
-         tags$h3("EU Trade"),
-         "Please choose the options you would like:",
-         checkboxInput("eumonthsum", "Sum over months"),
-         checkboxInput("eucountrysum", "Sum over countries"),
-         radioButtons("eucnlevel", "Choose which commodity code digit level you would like to sum over", inline = TRUE,
-                      selected = "8-digit",
-                      choices = c("2-digit","4-digit","6-digit","8-digit")),
-         fluidRow(
-           column(10),
-           column(2, downloadButton("euadvancedownload", "Download data"))
-         ),
+         # tags$h3("EU Trade"),
+         # "Please choose the options you would like:",
+         # checkboxInput("eumonthsum", "Sum over months"),
+         # checkboxInput("eucountrysum", "Sum over countries"),
+         # radioButtons("eucnlevel", "Choose which commodity code digit level you would like to sum over", inline = TRUE,
+         #              selected = "8-digit",
+         #              choices = c("2-digit","4-digit","6-digit","8-digit")),
+         # fluidRow(
+         #   column(10),
+         #   column(2, downloadButton("euadvancedownload", "Download data"))
+         # ),
          tags$br(),
          "Please note that not all commodity codes at the 4 and 6 digit level exist in the official commodity code hierarchy. This is indicated in downloaded data when the description box is blank."
          
@@ -670,8 +614,11 @@ tabPanel("Advanced Download",
 # SERVER ======================================================================
 
 server <- function(input, output, session) {
-  
-  queryData <- reactiveValues(dataraw = NULL, portsumraw = NULL, countrysumraw = NULL, comcodesumraw = NULL)
+
+  queryData <- reactiveValues(dataraw = NULL, dataraw_EU = NULL, dataraw_NonEU = NULL,
+                              portsumraw = NULL, portsumraw_EU = NULL, portsumraw_NonEU = NULL,
+                              countrysumraw = NULL, countrysumraw_EU = NULL, countrysumraw_NonEU = NULL,
+                              comcodesumraw = NULL, comcodesumraw_EU = NULL, comcodesumraw_NonEU = NULL)
   comcodeLegendData <- reactiveValues(comcodelegend = NULL)
   sankeyData <- reactiveValues(links = NULL, nodes = NULL, pclinks = NULL, pcnodes = NULL)
   mapData <- reactiveValues(mapWorld = NULL)
@@ -679,11 +626,11 @@ server <- function(input, output, session) {
 
   nullDataframe <- reactiveValues(nullDataframe = NULL, eunullDataframe = NULL, comcodequery = NULL)
 
-  euQueryData <- reactiveValues(euDataRaw = NULL)
-  euComcodeLegendData <- reactiveValues(comcodelegend = NULL)
-  euSankeyData <- reactiveValues(links = NULL, nodes = NULL)
-  euMapData <- reactiveValues(mapWorld = NULL)
-  euTimeseriesData <- reactiveValues(byComcode = NULL, byCountry = NULL)
+  # euQueryData <- reactiveValues(euDataRaw = NULL)
+  # euComcodeLegendData <- reactiveValues(comcodelegend = NULL)
+  # euSankeyData <- reactiveValues(links = NULL, nodes = NULL)
+  # euMapData <- reactiveValues(mapWorld = NULL)
+  # euTimeseriesData <- reactiveValues(byComcode = NULL, byCountry = NULL)
 
 
 
@@ -797,31 +744,6 @@ server <- function(input, output, session) {
                          options = list(maxItems = 20))
   })
 
-  # ALL FF FILTER ------------------------------------------------------------
-
-  # Update so that when box is ticked the commodity code selectors are disabled and the filter boxes are enabled
-
-
-  observe({
-    if(input$foodfeedfilter == TRUE) {
-      shinyjs::disable("comcode2")
-      shinyjs::disable("comcode4")
-      shinyjs::disable("comcode6")
-      shinyjs::disable("comcode8")
-      shinyjs::enable("foodorfeed")
-      shinyjs::enable("poaoorfnao")
-    } else {
-      shinyjs::enable("comcode2")
-      shinyjs::enable("comcode4")
-      shinyjs::enable("comcode6")
-      shinyjs::enable("comcode8")
-      shinyjs::disable("foodorfeed")
-      shinyjs::disable("poaoorfnao")
-    }
-
-  })
-
-
   # DROPDOWN CASCADING =========================================================
 
 
@@ -867,7 +789,7 @@ server <- function(input, output, session) {
     allDescendants <- descendants(comcode, comcode_4_selection)
     allDescendants2<-descendants(comcode, comcode_2_selection)
 
-    
+
     # Update Comcodes
     if (is.null(comcode_4_selection) == FALSE) {
       if ("All" %in% comcode_4_selection & "All" %in% comcode_2_selection){
@@ -903,7 +825,7 @@ server <- function(input, output, session) {
   })
 
   observe({
-    
+
     comcode_6_selection <- comcodeshort(input$comcode6)
     comcode_4_selection <- comcodeshort(input$comcode4)
     comcode_2_selection <- comcodeshort(input$comcode2)
@@ -960,14 +882,53 @@ server <- function(input, output, session) {
 #  })
 
 
+
+
+
   observeEvent(input$queryButton,{
     input$queryButton
+
+    #display "UK Imports" or "UK Exports" header on results panel depending on parameters
+    if(input$impexpSelect == "Imports"){
+      output$impexpHeader <- renderUI({
+        headerPanel("UK Imports Data")
+      })
+    } else if (input$impexpSelect == "Exports"){
+      output$impexpHeader <- renderUI({
+        headerPanel("UK Exports Data")
+      })
+    }
 
 
     # Use selectors information to build plot
     isolate({
 
+      #create vector with years 2021-2060
+      FutureYears <- as.character(2021:2060)
 
+
+      #create vector with EU country names and "All EU"
+      EU_country_list <- c((eucountrycode %>% pull(countryname)), "All EU")
+
+      #Disappear Number of Consignments radiobutton if datestart or dateend contain a year from 2021 onwards or if any non-EU country is selected
+      if((substr(input$datestart,1,4) %in% FutureYears) |
+         (substr(input$dateend,1,4) %in% FutureYears) |
+         (FALSE %in% (input$countryselect %in% EU_country_list)) |
+         (is.null(input$countryselect))
+         ){
+        updateRadioButtons(session, "unitSelect", choices = c("Price (GBP)", "Weight (KG)", "Price Per Kilo (GBP/KG)"), inline = TRUE, selected = "Price (GBP)")
+        output$ConsignmentsMessage <- renderText({
+            "Please note that Number of Consignments data is not available for Non-EU data and is only available for EU data for dates before 2021.  If you wish to view Number of Consignments data, please adjust your query parameters accordingly."
+        })
+      } else {
+        updateRadioButtons(session, "unitSelect", choices = c("Price (GBP)", "Weight (KG)", "Price Per Kilo (GBP/KG)", "Number of Consignments"), inline = TRUE, selected = "Price (GBP)")
+      output$ConsignmentsMessage <- NULL
+      }
+
+      #reset options after another query
+      updateRadioButtons(session, "EUNonEUSelect", choices = c("All", "EU", "Non-EU"), inline = TRUE, selected = "All")
+      updateCheckboxInput(session, "dateSliderAll", value = TRUE)
+      #updateSliderInput(session, "fontsizeSelect", value = 3)
 
       # Create a Progress object
       progress <- shiny::Progress$new()
@@ -1007,18 +968,17 @@ server <- function(input, output, session) {
         portqueryRegion <- portcode %>% filter(region %in% input$portselect) %>% pull(portcode)
         portquerySelect <- portcode %>% filter(portname %in% input$portselect) %>% pull(portcode)
         portquery <- unique(c(portqueryRegion, portquerySelect))
-        
-        #portquery <- portcode %>% filter(portname %in% input$portselect) %>% pull(portcode)
+
       }
 
       if ("All" %in% input$countryselect | is.null(input$countryselect) | ("All EU" %in% input$countryselect & "All Non-EU" %in% input$countryselect)){
         countryquery <- countrycode$countrycode
       } else if ("All EU" %in% input$countryselect) {
-        countryqueryEU <- eucountrycode$countrycode 
+        countryqueryEU <- eucountrycode$countrycode
         countryquerySelect <- noneucountrycode %>% filter(countryname %in% input$countryselect) %>% pull(countrycode)
         countryquery <- c(countryqueryEU, countryquerySelect)
       } else if ("All Non-EU" %in% input$countryselect) {
-        countryquerynonEU <- noneucountrycode$countrycode 
+        countryquerynonEU <- noneucountrycode$countrycode
         countryquerySelect <- eucountrycode %>% filter(countryname %in% input$countryselect) %>% pull(countrycode)
         countryquery <- c(countryquerynonEU, countryquerySelect)
       } else {
@@ -1026,42 +986,48 @@ server <- function(input, output, session) {
       }
 
 
-      # NON-EU SPECIFIC --------------------------------------------------------
+      #  --------------------------------------------------------
 
       # Obtain date range
       daterangequery <- rev(dates[match(input$dateend,dates):match(input$datestart,dates)])
       # Update dateSlider with daterangequery
       updateSliderTextInput(session,"dateSlider",
                            choices=daterangequery)
-      # Convert to Query Format
-      daterangequery <- paste0(substr(daterangequery,6,7),
+
+      # Convert to Query Format, duplicate dates replacing '20' with 99' to account for BTTA in arrivals data
+      daterangequery <- c(paste0(substr(daterangequery,6,7),
                                "/",
-                               substr(daterangequery,1,4))
+                               substr(daterangequery,1,4)),
+                          paste0(substr(daterangequery,6,7),
+                                 "/99",
+                                 substr(daterangequery,3,4)))
+
+
 
       # First line of query dependent on Import or Export - parametrize to select*sumquery vars.
       #Adding flexibility to choose country of origin or dispatch for non-EU imports
 
       if (input$impexpSelect == "Imports"){
         if (input$codorcooselect == "Country of Origin"){
-          selectquery <- "SELECT coo_alpha,comcode,port_alpha,account_date,sum(value),sum(quantity_1) FROM imports "
+          selectquery <- "SELECT coo_alpha,comcode,port_alpha,account_date,sum(value),sum(quantity_1),sum(number_of_consignments) FROM imports_and_arrivals "
           wherecountrycondition <- ")') AND (coo_alpha SIMILAR TO '("
           groupbyquery <- "GROUP BY coo_alpha,comcode,port_alpha,account_date"}
         else if (input$codorcooselect == "Country of Dispatch"){
-          selectquery <- "SELECT cod_alpha,comcode,port_alpha,account_date,sum(value),sum(quantity_1) FROM imports "
+          selectquery <- "SELECT cod_alpha,comcode,port_alpha,account_date,sum(value),sum(quantity_1),sum(number_of_consignments) FROM imports_and_arrivals "
           wherecountrycondition <- ")') AND (cod_alpha SIMILAR TO '("
           groupbyquery <- "GROUP BY cod_alpha,comcode,port_alpha,account_date"}
 
-        joinbyquery <- "imports.comcode = allfoodfeed.comcodeff "
+        joinbyquery <- "imports_and_arrivals.comcode = allfoodfeed.comcodeff "
 
         if (input$tradeselect == "All data"){tradequery <- " "}
         else if(input$tradeselect == "Special trade"){tradequery <- "AND (trade_indicator = '0' OR trade_indicator = '5') AND NOT suite_indicator = '003' AND NOT suite_indicator  = '009' "}
         else if (input$tradeselect == "General trade"){tradequery <- "AND (trade_indicator = '0' OR trade_indicator = '4') AND NOT suite_indicator = '003' AND NOT suite_indicator  = '008' AND NOT suite_indicator  = '009' "}
       }
       else if (input$impexpSelect == "Exports"){
-        selectquery <- "SELECT port_alpha,comcode,cod_alpha,account_date,sum(value),sum(quantity_1) FROM exports "
+        selectquery <- "SELECT port_alpha,comcode,cod_alpha,account_date,sum(value),sum(quantity_1), sum(number_of_consignments) FROM exports_and_dispatches "
         wherecountrycondition <- ")') AND (cod_alpha SIMILAR TO '("
         groupbyquery <- "GROUP BY cod_alpha,comcode,port_alpha,account_date"
-        joinbyquery <- "exports.comcode = allfoodfeed.comcodeff "
+        joinbyquery <- "exports_and_dispatches.comcode = allfoodfeed.comcodeff "
 
         #Adding option to look at all data, special trade, or general trade
         if (input$tradeselect == "All data"){tradequery <- " "}
@@ -1073,7 +1039,8 @@ server <- function(input, output, session) {
 
 
       #Adding an if statement to do a different query for foodfeed filter
-      if (input$foodfeedfilter == TRUE)
+      #if (input$foodfeedfilter == TRUE)
+      if(input$byCommodityTab == "By Commodity Type")
       {
         if (input$foodorfeed == "All Food & Feed" ){filterffquery<-""}
         else if (input$foodorfeed == "Food" ){filterffquery<-"AND allfoodfeed.food = 'Yes' "}
@@ -1114,7 +1081,7 @@ server <- function(input, output, session) {
                           groupbyquery) # import = coo_alpha, export = cod_alpha!
       }
 
-      progress$set(message = "Querying Non-EU Data", value = 0.5)
+      progress$set(message = "Querying Trade Data", value = 0.5)
 
       # Run Query
       dataraw <- dbGetQuery(tradedata, dataquery)
@@ -1127,242 +1094,174 @@ server <- function(input, output, session) {
 
         # Show a red notification warning the user that no data was found.
         isolate({
-          showNotification(paste0("No Non-EU ",
-                                  input$impexpSelect,
-                                  " for selected query parameters."), type = "error", duration = 0, id="noneunosuccess")
+          showNotification(paste0("No data for selected query parameters."), type = "error", duration = 0, id="noneunosuccess")
         })
       } else {
 
         # Show a blue notification to notify the user the query was successful
-        showNotification(paste0("Non-EU ",
-                                input$impexpSelect,
-                                " query successful!"), type = "message", duration = 0, id="noneusuccess")
+        showNotification(paste0("Query successful!"), type = "message", duration = 0, id="noneusuccess")
 
         # Transform month back to readable format
-        dataraw$account_date <- paste0(substr(dataraw$account_date,4,7),
+        dataraw$account_date <- paste0("20",
+                                       substr(dataraw$account_date,6,7),
                                        "-",
                                        substr(dataraw$account_date,1,2))
 
         # Set up correct colnames and create portsum/countrysum dataframes from dataraw
         if (input$impexpSelect == "Imports") {
-            colnames(dataraw) = c("country","comcode","port","month","price", "weight")
+            colnames(dataraw) = c("country","comcode","port","month","price", "weight", "consignments")
             dataraw$country[is.na(dataraw$country)] <- "Unknown Country" # blank country = <NA>
             #dataraw$port[dataraw$port == "   "] <- "UNK" # blank port = ""
+            #dataraw$country[dataraw$country == "EU UNK"] <- "UNK EU" # change countrycode to match desclookup
 
             portsumraw <- dataraw %>%
-                select(country,comcode,month,price,weight) %>%
+                select(country,comcode,month,price,weight, consignments) %>%
                 group_by(country,comcode,month) %>%
-                summarise(price = sum(price), weight = sum(weight))
+                summarise(price = sum(price), weight = sum(weight), consignments = sum(consignments))
             countrysumraw <- dataraw %>%
-                select(comcode,port,month,price,weight) %>%
+                select(comcode,port,month,price,weight, consignments) %>%
                 group_by(comcode,port,month) %>%
-                summarise(price = sum(price), weight = sum(weight))
+                summarise(price = sum(price), weight = sum(weight), consignments = sum(consignments))
             comcodesumraw <- dataraw %>%
-                select(country,port,month,price,weight) %>%
+                select(country,port,month,price,weight,consignments) %>%
                 group_by(country,port,month) %>%
-                summarise(price = sum(price), weight = sum(weight))
+                summarise(price = sum(price), weight = sum(weight), consignments = sum(consignments))
+
+            #create dataframes filtered for EU countries only
+            portsumraw_EU <- dataraw %>%
+              filter(country %in% eucountrycode$countrycode) %>%
+              select(country,comcode,month,price,weight,consignments) %>%
+              group_by(country,comcode,month) %>%
+              summarise(price = sum(price), weight = sum(weight), consignments = sum(consignments))
+            countrysumraw_EU <- dataraw %>%
+              filter(country %in% eucountrycode$countrycode) %>%
+              select(comcode,port,month,price,weight, consignments) %>%
+              group_by(comcode,port,month) %>%
+              summarise(price = sum(price), weight = sum(weight), consignments=sum(consignments))
+            comcodesumraw_EU <- dataraw %>%
+              filter(country %in% eucountrycode$countrycode) %>%
+              select(country,port,month,price,weight,consignments) %>%
+              group_by(country,port,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+
+            #create dataframes filtered for NonEU countries only
+            portsumraw_NonEU <- dataraw %>%
+              filter(country %in% noneucountrycode$countrycode) %>%
+              select(country,comcode,month,price,weight,consignments) %>%
+              group_by(country,comcode,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+            countrysumraw_NonEU <- dataraw %>%
+              filter(country %in% noneucountrycode$countrycode) %>%
+              select(comcode,port,month,price,weight,consignments) %>%
+              group_by(comcode,port,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+            comcodesumraw_NonEU <- dataraw %>%
+              filter(country %in% noneucountrycode$countrycode) %>%
+              select(country,port,month,price,weight,consignments) %>%
+              group_by(country,port,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
 
         } else if (input$impexpSelect == "Exports") {
-            colnames(dataraw) = c("port","comcode","country","month","price", "weight")
+            colnames(dataraw) = c("port","comcode","country","month","price", "weight", "consignments")
             dataraw$country[is.na(dataraw$country)] <- "Unknown Country" # blank country = <NA>
             #dataraw$port[dataraw$port == "   "] <- "UNK" # blank port = ""
 
             portsumraw <- dataraw %>%
-                select(comcode,country,month,price,weight) %>%
+                select(comcode,country,month,price,weight,consignments) %>%
                 group_by(comcode,country,month) %>%
-                summarise(price = sum(price), weight = sum(weight))
+                summarise(price = sum(price), weight = sum(weight), consignments = sum(consignments))
             countrysumraw <- dataraw %>%
-                select(port,comcode,month,price,weight) %>%
+                select(port,comcode,month,price,weight,consignments) %>%
                 group_by(port,comcode,month) %>%
-                summarise(price = sum(price), weight = sum(weight))
+                summarise(price = sum(price), weight = sum(weight), consignments=sum(consignments))
             comcodesumraw <- dataraw %>%
-                select(port,country,month,price,weight) %>%
+                select(port,country,month,price,weight,consignments) %>%
                 group_by(port,country,month) %>%
-                summarise(price = sum(price), weight = sum(weight))
+                summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+
+            portsumraw_EU <- dataraw %>%
+              filter(country %in% eucountrycode$countrycode) %>%
+              select(comcode,country,month,price,weight,consignments) %>%
+              group_by(comcode,country,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+            countrysumraw_EU <- dataraw %>%
+              filter(country %in% eucountrycode$countrycode) %>%
+              select(port,comcode,month,price,weight,consignments) %>%
+              group_by(port,comcode,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+            comcodesumraw_EU <- dataraw %>%
+              filter(country %in% eucountrycode$countrycode) %>%
+              select(port,country,month,price,weight,consignments) %>%
+              group_by(port,country,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+
+            portsumraw_NonEU <- dataraw %>%
+              filter(country %in% noneucountrycode$countrycode) %>%
+              select(comcode,country,month,price,weight,consignments) %>%
+              group_by(comcode,country,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+            countrysumraw_NonEU <- dataraw %>%
+              filter(country %in% noneucountrycode$countrycode) %>%
+              select(port,comcode,month,price,weight,consignments) %>%
+              group_by(port,comcode,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+            comcodesumraw_NonEU <- dataraw %>%
+              filter(country %in% noneucountrycode$countrycode) %>%
+              select(port,country,month,price,weight,consignments) %>%
+              group_by(port,country,month) %>%
+              summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+
         }
 
         portsumraw <- ungroup(portsumraw)
+        portsumraw_EU <- ungroup(portsumraw_EU)
+        portsumraw_NonEU <- ungroup(portsumraw_NonEU)
+
         countrysumraw <- ungroup(countrysumraw)
+        countrysumraw_EU <- ungroup(countrysumraw_EU)
+        countrysumraw_NonEU <- ungroup(countrysumraw_NonEU)
+
         comcodesumraw <- ungroup(comcodesumraw)
+        comcodesumraw_EU <- ungroup(comcodesumraw_EU)
+        comcodesumraw_NonEU <- ungroup(comcodesumraw_NonEU)
 
       }
 
 
 
-      # EU SPECIFIC ------------------------------------------------------------
-
-      # Set nullDataframe flag to FALSE
-      nullDataframe$eunullDataframe <- FALSE
-
-      # Obtain date range
-      eudaterangequery <- rev(dates[match(input$dateend,dates):match(input$datestart,dates)])
-      # Update dateSlider with daterangequery
-      updateSliderTextInput(session,"eudateSlider",
-                           choices=eudaterangequery)
-      # Transform to EU Query Format
-      #eudaterangequery <- paste0("0",
-      #                           substr(eudaterangequery,1,4),
-      #                           substr(eudaterangequery,6,7))
-      #Need to add in the BTTA estimation corrections
-      eudaterangequery <- c(paste0("0",substr(eudaterangequery,1,4),
-               substr(eudaterangequery,6,7)),
-        paste0("099",substr(eudaterangequery,3,4),
-               substr(eudaterangequery,6,7)))
-
-
-      # First line of query dependent on Import or Export
-      # Have to take the substring of the date to account for BTTA estimations which come under dates beginning with '099'
-      if (input$impexpSelect == "Imports") {
-        euselectquery <- "SELECT smk_cod_alpha, smk_comcode, SUBSTRING(smk_period_reference,4,7) AS smk_period_reference, sum(smk_no_of_consignments), sum(smk_stat_value), sum(smk_nett_mass) FROM arrivals "
-        eugroupbyquery <- "GROUP BY smk_cod_alpha,smk_comcode, SUBSTRING(smk_period_reference,4,7)"
-        eujoinbyquery <- "arrivals.smk_comcode = allfoodfeed.comcodeff "
-
-        if (input$tradeselect == "All data"){eutradequery <- " "}
-        else if(input$tradeselect == "Special trade"){eutradequery <- "AND (smk_trade_ind = '0' OR smk_trade_ind = '5') AND NOT smk_suite_indicator = '009' "}
-        else if (input$tradeselect == "General trade"){eutradequery <- "AND (smk_trade_ind = '0' OR smk_trade_ind = '4') AND NOT smk_suite_indicator = '008' AND NOT smk_suite_indicator = '009' "}
-
-        } else if (input$impexpSelect == "Exports") {
-        euselectquery <- "SELECT smk_comcode, smk_cod_alpha, SUBSTRING(smk_period_reference,4,7) AS smk_period_reference, sum(smk_no_of_consignments), sum(smk_stat_value), sum(smk_nett_mass) FROM dispatches "
-        eugroupbyquery <- "GROUP BY smk_comcode,smk_cod_alpha,SUBSTRING(smk_period_reference,4,7)"
-        eujoinbyquery <- "dispatches.smk_comcode = allfoodfeed.comcodeff "
-
-        if (input$tradeselect == "All data"){eutradequery <- " "}
-        else if(input$tradeselect == "Special trade"){eutradequery <- "AND smk_trade_ind = '0' AND NOT smk_suite_indicator = '009' "}
-        else if (input$tradeselect == "General trade"){eutradequery <- "AND (smk_trade_ind = '0' OR smk_trade_ind = '1') AND NOT smk_suite_indicator = '008' AND NOT smk_suite_indicator = '009' "}
-      }
-
-
-
-      if (input$foodfeedfilter == TRUE) {
-
-        if (input$foodorfeed == "All Food & Feed" ){eufilterffquery<-""}
-        else if (input$foodorfeed == "Food" ){eufilterffquery<-"AND allfoodfeed.food = 'Yes' "}
-        else if (input$foodorfeed == "Feed" ){eufilterffquery<-"AND allfoodfeed.feed = 'Yes' "}
-
-        if (input$poaoorfnao == "All FNAO & POAO" ){eufilterfpquery<-""}
-        else if (input$poaoorfnao == "FNAO" ){eufilterfpquery<-"AND allfoodfeed.fnao = 'Yes' "}
-        else if (input$poaoorfnao == "POAO" ){eufilterfpquery<-"AND allfoodfeed.poao = 'Yes' "}
-
-
-
-        eudataquery = paste0(euselectquery,
-                             "INNER JOIN allfoodfeed ON ", eujoinbyquery,
-                             "WHERE (smk_cod_alpha SIMILAR TO '(",
-                             paste(countryquery,collapse = "|"),
-                             ")') AND (smk_period_reference IN ('",
-                             paste(eudaterangequery, collapse = "', '"),
-                             "')) ",
-                             eufilterffquery,
-                             eufilterfpquery,
-                             eutradequery,
-                             eugroupbyquery)
-
-      } else{
-
-      eudataquery = paste0(euselectquery,
-                         "WHERE (smk_comcode SIMILAR TO '(",
-                         paste(comcodequery,collapse = "|"),
-                         ")') AND (smk_cod_alpha SIMILAR TO '(",
-                         paste(countryquery,collapse = "|"),
-                         ")') AND (smk_period_reference IN ('",
-                         paste(eudaterangequery, collapse = "', '"),
-                         "')) ",
-                         eutradequery,
-                         eugroupbyquery)
-
-      }
-
-
-      ###test
-
-      if (!is.null(noneusuccess)) {removeNotification(noneusuccess)}
-      if (!is.null(eusuccess)) {removeNotification(eusuccess)}
-      if (!is.null(noneunosuccess)) {removeNotification(noneunosuccess)}
-      if (!is.null(eunosuccess)) {removeNotification(eunosuccess)}
-
-      # Defining messages
-      noneusuccess <<- NULL
-      eusuccess <<- NULL
-      noneunosuccess <<- NULL
-      eunosuccess <<- NULL
-
-
-      ###test
-
-      progress$set(message = "Querying EU Data", value = 0.75)
-
-
-
-
-      # Query Data
-      euDataRaw <- dbGetQuery(tradedata, eudataquery)
-
-      # Break out of EU Shaping if query returns no values (ie, df == dim 0,0)
-      if (dim(euDataRaw)[1] == 0) {
-        # Set nullDataframe flag to TRUE to stop downstream reactivity
-        nullDataframe$eunullDataframe <- TRUE
-        nullDataframe$comcodequery <- paste(gsub("_","",comcodequery),collapse = ",")
-
-        # Show a red notification warning the user that no data was found.
-        isolate({
-
-          showNotification(paste0("No EU ",
-                                  input$impexpSelect,
-                                  " for selected query parameters."), type = "error", duration = NULL, id="eunosuccess")
-        })
-      } else {
-
-        # Show a blue notification to notify the user the query was successful
-        showNotification(paste0("EU ",
-                                input$impexpSelect,
-                                " query successful!"), type = "message", duration = 0, id="eusuccess")
-
-        if (input$impexpSelect == "Imports") {
-          colnames(euDataRaw) = c("country","comcode","month", "consignments", "price", "weight")
-        } else if (input$impexpSelect == "Exports") {
-          colnames(euDataRaw) = c("comcode","country","month", "consignments", "price", "weight")
-        }
-
-        # Transform month back to readable format
-       # euDataRaw$month <- paste0(substr(euDataRaw$month,2,5),
-      #                            "-",
-      #                            substr(euDataRaw$month,6,7))
-
-        euDataRaw$month <- paste0("20",substr(euDataRaw$month,1,2),
-                                  "-",
-                                  substr(euDataRaw$month,3,4))
-
-      #  euDataRaw$month <- ifelse(substr(euDataRaw$month,1,3) == "099",
-      #                            paste0("20",substr(euDataRaw$month,4,5),
-      #                            "-",
-      #                            substr(euDataRaw$month,6,7)),
-      #                            paste0(substr(euDataRaw$month,2,5),
-      #                                   "-",
-      #                                   substr(euDataRaw$month,6,7)))
-
-        # Handle NAs
-        euDataRaw$country[is.na(euDataRaw$country)] <- "Unknown Country" # blank country = <NA>
-      }
-
+ 
       # End Isolate
       })
 
     queryData$dataraw <- dataraw
-    euQueryData$euDataRaw <- euDataRaw
 
     if (!nullDataframe$nullDataframe) {
+
+    queryData$dataraw_EU <- dataraw %>% filter(country %in% eucountrycode$countrycode)
+    queryData$dataraw_NonEU <- dataraw %>% filter(country %in% noneucountrycode$countrycode)
+   # euQueryData$euDataRaw <- euDataRaw
+
+   # if (!nullDataframe$nullDataframe) {
       queryData$portsumraw <- portsumraw
+      queryData$portsumraw_EU <- portsumraw_EU
+      queryData$portsumraw_NonEU <- portsumraw_NonEU
+
       queryData$countrysumraw <- countrysumraw
+      queryData$countrysumraw_EU <- countrysumraw_EU
+      queryData$countrysumraw_NonEU <- countrysumraw_NonEU
+
       queryData$comcodesumraw <- comcodesumraw
+      queryData$comcodesumraw_EU <- comcodesumraw_EU
+      queryData$comcodesumraw_NonEU <- comcodesumraw_NonEU
     }
 
   })
 
 
-  # NON-EU DATA SHAPING AND PLOTTING ===========================================
+  # DATA SHAPING AND PLOTTING ===========================================
 
   observe({
-    # FILTER DATE/UNIT IN DATA -------------------------------------------------
+    # FILTER EU,NON-EU/DATE/UNIT IN DATA -------------------------------------------------
 
     # Conditions for observe statement to run
     if (input$queryButton == 0) return()
@@ -1375,6 +1274,7 @@ server <- function(input, output, session) {
     # Dependencies - changes to Date Slider and Unit Selector
     input$dateSlider
     input$unitSelect
+    input$EUNonEUSelect
 
     # Create a Progress object
     progress <- shiny::Progress$new()
@@ -1387,37 +1287,62 @@ server <- function(input, output, session) {
     # Based on date and unit, selected from fluidrow beneath comcode legend
 
 
+    if (input$EUNonEUSelect == "EU"){
+      dataraw <- queryData$dataraw_EU
+      portsum <- queryData$portsumraw_EU
+      countrysum <- queryData$countrysumraw_EU
+      comcodesum <- queryData$comcodesumraw_EU
+    } else if (input$EUNonEUSelect == "Non-EU"){
+      dataraw <- queryData$dataraw_NonEU
+      portsum <- queryData$portsumraw_NonEU
+      countrysum <- queryData$countrysumraw_NonEU
+      comcodesum <- queryData$comcodesumraw_NonEU
+    } else {
+      dataraw <- queryData$dataraw
+      portsum <- queryData$portsumraw
+      countrysum <- queryData$countrysumraw
+      comcodesum <- queryData$comcodesumraw
+    }
 
     # Select correct month
     if (input$dateSliderAll == TRUE) {
-      portsum <- queryData$portsumraw %>% select(-month)
-      countrysum <- queryData$countrysumraw %>% select(-month)
-      comcodesum <- queryData$comcodesumraw %>% select(-month)
+      portsum <- portsum %>% select(-month)
+      countrysum <- countrysum %>% select(-month)
+      comcodesum <- comcodesum %>% select(-month)
       if (input$impexpSelect == "Imports") {
-        portsum <- portsum %>% group_by(country,comcode) %>% summarise(price = sum(price), weight = sum(weight))
-        countrysum <- countrysum %>% group_by(comcode,port) %>% summarise(price = sum(price), weight = sum(weight))
-        comcodesum <- comcodesum %>% group_by(country,port) %>% summarise(price = sum(price), weight = sum(weight))
+        portsum <- portsum %>% group_by(country,comcode) %>% summarise(price = sum(price), weight = sum(weight), consignments=sum(consignments))
+        countrysum <- countrysum %>% group_by(comcode,port) %>% summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+        comcodesum <- comcodesum %>% group_by(country,port) %>% summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
       } else if (input$impexpSelect == "Exports") {
-        portsum <- portsum %>% group_by(comcode,country) %>% summarise(price = sum(price), weight = sum(weight))
-        countrysum <- countrysum %>% group_by(port,comcode) %>% summarise(price = sum(price), weight = sum(weight))
-        comcodesum <- comcodesum %>% group_by(port,country) %>% summarise(price = sum(price), weight = sum(weight))
+        portsum <- portsum %>% group_by(comcode,country) %>% summarise(price = sum(price), weight = sum(weight), consignments=sum(consignments))
+        countrysum <- countrysum %>% group_by(port,comcode) %>% summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
+        comcodesum <- comcodesum %>% group_by(port,country) %>% summarise(price = sum(price), weight = sum(weight),consignments=sum(consignments))
       }
     } else {
-      portsum <- queryData$portsumraw %>% filter(month == input$dateSlider) %>% select(-month)
-      countrysum <- queryData$countrysumraw %>% filter(month == input$dateSlider) %>% select(-month)
-      comcodesum <- queryData$comcodesumraw %>% filter(month == input$dateSlider) %>% select(-month)
+      portsum <- portsum %>% filter(month == input$dateSlider) %>% select(-month)
+      countrysum <- countrysum %>% filter(month == input$dateSlider) %>% select(-month)
+      comcodesum <- comcodesum %>% filter(month == input$dateSlider) %>% select(-month)
     }
 
     # Select correct unit
     if (input$unitSelect == "Price (GBP)"){
       portsum <- portsum %>% select(-weight)
-      countrysum <- countrysum %>% select(-weight)
-      comcodesum <- comcodesum %>% select(-weight)
+      countrysum <- countrysum %>% select(-c(weight,consignments))
+      comcodesum <- comcodesum %>% select(-c(weight,consignments))
+
+
 
     } else if (input$unitSelect == "Weight (KG)"){
-      portsum <- portsum %>% select(-price)
-      countrysum <- countrysum %>% select(-price)
-      comcodesum <- comcodesum %>% select(-price)
+      portsum <- portsum %>% select(-c(price,consignments))
+      countrysum <- countrysum %>% select(-c(price,consignments))
+      comcodesum <- comcodesum %>% select(-c(price,consignments))
+
+
+    } else if(input$unitSelect == "Number of Consignments"){
+      portsum <- portsum %>% select(-c(price,weight))
+      countrysum <- countrysum %>% select(-c(price,weight))
+      comcodesum <- comcodesum %>% select(-c(price,weight))
+
 
     } else if (input$unitSelect == "Price Per Kilo (GBP/KG)"){
       # For map:
@@ -1429,19 +1354,23 @@ server <- function(input, output, session) {
                             select(country,value)
       # For sankey:
       portsum$value <- portsum$price / portsum$weight
-      portsum <- portsum %>% select(-c(price,weight))
+      portsum <- portsum %>% select(-c(price,weight,consignments))
       countrysum$value <- countrysum$price / countrysum$weight
-      countrysum <- countrysum %>% select(-c(price,weight))
+      countrysum <- countrysum %>% select(-c(price,weight,consignments))
       comcodesum$value <- comcodesum$price / comcodesum$weight
-      comcodesum <- comcodesum %>% select(-c(price,weight))
+      comcodesum <- comcodesum %>% select(-c(price,weight,consignments))
+
+
     }
+
+
 
     # At this point there should be two string and one numeric vector in all sum
     # dataframes. Now rename that numeric vector, which is the unit used, to value.
 
-    colnames(portsum)[colnames(portsum) %in% c("price","weight")] <- "value"
-    colnames(countrysum)[colnames(countrysum) %in% c("price","weight")] <- "value"
-    colnames(comcodesum)[colnames(comcodesum) %in% c("price","weight")] <- "value"
+    colnames(portsum)[colnames(portsum) %in% c("price","weight","consignments")] <- "value"
+    colnames(countrysum)[colnames(countrysum) %in% c("price","weight","consignments")] <- "value"
+    colnames(comcodesum)[colnames(comcodesum) %in% c("price","weight","consignments")] <- "value"
 
     # Ungroup the data frames.
     portsum <- ungroup(portsum)
@@ -1450,16 +1379,41 @@ server <- function(input, output, session) {
 
     # Check again if, after sorting, we're dealing with a blank df.
     if (dim(portsum)[1] == 0) {
-      isolate({
-        # Show a red notification warning the user that no data was found.
-        showNotification(paste0("No Non-EU ",
-                                input$impexpSelect,
-                                " for selected query in month ",
-                                input$dateSlider,
-                                "."), type = "warning", duration = 0)
+
+
+      observe({
+        if(input$EUNonEUSelect == "All") {
+          output$NoDataMessage <- renderText({
+            paste0("No ",str_to_lower(input$impexpSelect), " for selected query parameters.")
+          })
+        } else {
+          output$NoDataMessage <- renderText({
+            paste0("No ",input$EUNonEUSelect, " ",str_to_lower(input$impexpSelect), " for selected query parameters.")
+          })
+        }
+
       })
+
+   #  isolate({
+
+       # if ()
+       #  output$EUNonEUMessage <- renderText({
+       #    paste0("No ",input$EUNonEUSelect, " ",input$impexpSelect, " for selected query parameters.")
+       #  })
+        # Show a red notification warning the user that no data was found.
+      #   showNotification(paste0("No ",
+      #                           input$EUNonEUSelect,
+      #                           " ",
+      #                           input$impexpSelect,
+      #                           " for selected query parameters."
+      #                           ), type = "warning", duration = 0)
+      # })
       # Break out of reactive chain
-      req(FALSE)
+     # req(FALSE)
+    } else {
+      observe({
+      output$NoDataMessage <- NULL
+      })
     }
 
 
@@ -1482,8 +1436,8 @@ server <- function(input, output, session) {
       colnames(link_portsum) <- c("source","target","value")
       link_countrysum <- countrysum
       colnames(link_countrysum) <- c("source","target","value")
-      
-      
+
+
 
       links <- bind_rows(link_portsum,link_countrysum)
       nodes <- data.frame(unique(c(links$source,links$target)),stringsAsFactors = FALSE)
@@ -1592,29 +1546,36 @@ server <- function(input, output, session) {
       # > Unit selections are slightly different too - price per kilo must be summed by
       #   comcode, by port, and by country then divided for each month.
 
+
       # Select correct unit
       if (input$unitSelect == "Price (GBP)"){
-        byComcode <- queryData$dataraw %>% select(month,comcode,price)
-        byCountry <- queryData$dataraw %>% select(month,country,price)
-        byPort <- queryData$dataraw %>% select(month,port,price)
+        byComcode <- dataraw %>% select(month,comcode,price)
+        byCountry <- dataraw %>% select(month,country,price)
+        byPort <- dataraw %>% select(month,port,price)
 
       } else if (input$unitSelect == "Weight (KG)"){
-        byComcode <- queryData$dataraw %>% select(month,comcode,weight)
-        byCountry <- queryData$dataraw %>% select(month,country,weight)
-        byPort <- queryData$dataraw %>% select(month,port,weight)
+        byComcode <- dataraw %>% select(month,comcode,weight)
+        byCountry <- dataraw %>% select(month,country,weight)
+        byPort <- dataraw %>% select(month,port,weight)
+
+      } else if (input$unitSelect == "Number of Consignments"){
+        byComcode <- dataraw %>% select(month,comcode,consignments)
+        byCountry <- dataraw %>% select(month,country,consignments)
+        byPort <- dataraw %>% select(month,port,consignments)
+
 
       }
 
       # Special case for Price Per Kilo
       if (input$unitSelect == "Price Per Kilo (GBP/KG)"){
         if (input$dateSliderAll != TRUE) {
-          byComcode <- queryData$dataraw %>% filter(month == input$dateSlider)
-          byCountry <- queryData$dataraw %>% filter(month == input$dateSlider)
-          byPort <- queryData$dataraw %>% filter(month == input$dateSlider)
+          byComcode <- dataraw %>% filter(month == input$dateSlider)
+          byCountry <- dataraw %>% filter(month == input$dateSlider)
+          byPort <- dataraw %>% filter(month == input$dateSlider)
         } else {
-          byComcode <- queryData$dataraw
-          byCountry <- queryData$dataraw
-          byPort <- queryData$dataraw
+          byComcode <- dataraw
+          byCountry <- dataraw
+          byPort <- dataraw
         }
 
         byComcode <- byComcode %>%
@@ -1637,9 +1598,9 @@ server <- function(input, output, session) {
                        select(-c(price,weight))
       } else {
         # else statement required for non-PricePerKilo options
-        colnames(byComcode)[colnames(byComcode) %in% c("price","weight")] <- "value"
-        colnames(byCountry)[colnames(byCountry) %in% c("price","weight")] <- "value"
-        colnames(byPort)[colnames(byPort) %in% c("price","weight")] <- "value"
+        colnames(byComcode)[colnames(byComcode) %in% c("price","weight","consignments")] <- "value"
+        colnames(byCountry)[colnames(byCountry) %in% c("price","weight","consignments")] <- "value"
+        colnames(byPort)[colnames(byPort) %in% c("price","weight","consignments")] <- "value"
 
         if (input$dateSliderAll != TRUE){
           byComcode <- byComcode %>% filter(month == input$dateSlider)
@@ -1709,21 +1670,36 @@ server <- function(input, output, session) {
 
   # SANKEY --------------------------------------------------------------------
 
-  
+
   output$sankeyTrade <-  renderSankeyNetwork({
 
   # Suppress output if nothing has been selected yet
     if (input$queryButton == 0) return()
   req(!nullDataframe$nullDataframe)
 
-  #set variable font size as a function of number of nodes
-  if (nrow(sankeyData$nodes) < 32) {
-    fsize = ((nrow(sankeyData$nodes))*(-0.25) + 20) }
-   else { fsize = 12 }
+  # if(dim(sankeyData$nodes)[1] == 0) {return()
+  # req(!nullDataframe$nullDataframe)
+  # }
 
-      sankeyNetwork(sankeyData$links, sankeyData$nodes,
+   # fsize <- (input$fontsizeSelect)*2.4 + 7
+
+ # set variable font size as a function of number of nodes
+  # if(nrow(sankeyData$nodes) < 10) {
+  #   fsize = 17
+  # } else  if (nrow(sankeyData$nodes) < 32) {
+  #   fsize = ((nrow(sankeyData$nodes))*(-0.25) + 20) }
+  #  else { fsize = 12 }
+  
+  if(nrow(sankeyData$nodes) < 32) {
+    fsize = -0.006*(nrow(sankeyData$nodes)-3)^2 + 17
+  } else {fsize = 12}
+
+     sankeyNetwork(sankeyData$links, sankeyData$nodes,
                    "source", "target", "value", "name",
                    fontSize = fsize, nodeWidth = 30)
+     
+
+     
   })
 
 
@@ -1735,10 +1711,10 @@ server <- function(input, output, session) {
   # Suppress output if nothing has been selected yet
     if (input$queryButton == 0) return()
     req(!nullDataframe$nullDataframe)
-    
+
     #set variable font size as a function of number of nodes
     if (nrow(sankeyData$pcnodes) < 32) {
-      fsizepc = ((nrow(sankeyData$pcnodes))*(-0.25) + 20) }
+      fsizepc = -0.006*(nrow(sankeyData$pcnodes)-3)^2 + 17 }
     else { fsizepc = 12 }
 
     sankeyNetwork(sankeyData$pclinks, sankeyData$pcnodes,
@@ -1751,6 +1727,9 @@ server <- function(input, output, session) {
   output$worldMap <- renderLeaflet({
     if (input$queryButton == 0) return()
     req(!nullDataframe$nullDataframe)
+
+    if (dim(mapData$dataPolygons)[1] == 0) return()
+      req(!nullDataframe$nullDataframe)
 
     isolate({
       # Need to scale the map values if we don't want to blow up R...
@@ -1785,6 +1764,9 @@ server <- function(input, output, session) {
     } else if (input$unitSelect == "Price Per Kilo (GBP/KG)"){
       legendModifier <- labelFormat(prefix = "Â£", suffix = paste0(unitSuffix, "/kg"))
       legendTitle <- "Price/Weight"
+    } else if (input$unitSelect == "Number of Consignments"){
+      legendModifier <- labelFormat(suffix = "")
+      legendTitle <- "Consignments"
     }
 
     leaflet(data = mapData$dataPolygons) %>%
@@ -1809,7 +1791,10 @@ server <- function(input, output, session) {
 
   # TIME SERIES ---------------------------------------------------------------
 
+
    output$tsByComcode <- renderPlotly({
+
+
        if (length(unique(timeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
        nbars <- length(timeseriesData$byComcode$comcode)
        ggplotly(
@@ -1818,13 +1803,13 @@ server <- function(input, output, session) {
            labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
                 y = paste(input$unitSelect, " \n"),
                 fill = "Commodity Codes") +
+             theme_bw() +
            theme(axis.text.x = element_text(angle=45, hjust=1)) +
            scale_y_continuous(labels = comma) +
            scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
        )
+
    })
-
-
 
 
   output$tsByCountry <- renderPlotly({
@@ -1836,6 +1821,7 @@ server <- function(input, output, session) {
           labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
                y = paste(input$unitSelect, " \n"),
                fill = "Countries") +
+            theme_bw() +
           theme(axis.text.x = element_text(angle=45, hjust=1)) +
           scale_y_continuous(labels = comma) +
           scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
@@ -1851,6 +1837,7 @@ server <- function(input, output, session) {
           labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
                y = paste(input$unitSelect, " \n"),
                fill = "Ports") +
+            theme_bw()+
           theme(axis.text.x = element_text(angle=45, hjust=1)) +
           scale_y_continuous(labels = comma) +
           scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
@@ -1864,7 +1851,7 @@ server <- function(input, output, session) {
   output$dataDownload <- downloadHandler(
     filename = function() {
       # "TradeDataVisNonEUExtract.csv"
-      "TradeDataVisNonEUExtract.xlsx"
+      "TradeDataVisExtract.xlsx"
     },
     content = function(file) {
       #Define metadata information tab
@@ -1876,9 +1863,9 @@ server <- function(input, output, session) {
         left_join(countrycode, by = c("country" = "countrycode")) %>%
         mutate(comcode2 = substr(comcode, 1, 2)) %>%
         left_join(comcodelookup, by = c("comcode2" = "commoditycode"))
-        downloadfile <- downloadfile %>% select("2-Digit Comcode" = comcode2, "2-Digit Description" = description.y, "Commodity Code" = comcode, "Port Code" = port, "Port Name" = portname, "Port Type" = type, "Country Code" = country, "Country Name" = countryname, "Month" = month, "Value (Â£)" = price, "Weight (kg)" = weight, "Commodity Description" = description.x)
-      #write.csv(downloadfile, file, row.names = FALSE)
-      write.xlsx2(downloadfile, file, sheetName = "Non-EU Trade Data", row.names = FALSE)
+        downloadfile <- downloadfile %>% select("2-Digit Comcode" = comcode2, "2-Digit Description" = description.y, "Commodity Code" = comcode, "Port Code" = port, "Port Name" = portname, "Port Type" = type, "Country Code" = country, "Country Name" = countryname, "Month" = month, "Value (Â£)" = price, "Weight (kg)" = weight, "Number of Consignments" = consignments, "Commodity Description" = description.x) %>%
+          mutate(`Number of Consignments` = ifelse(`Number of Consignments` == 0, "", `Number of Consignments`))
+      write.xlsx2(downloadfile, file, sheetName = "Trade Data", row.names = FALSE)
       #write.xlsx2(noneu_info,file,sheetName = "Information", append = TRUE,row.names = FALSE,col.names=FALSE)
     }
   )
@@ -1897,395 +1884,10 @@ server <- function(input, output, session) {
 
 
 
-
-
-  # EU DATA SHAPING AND PLOTTING ===============================================
-
-  observe({
-    # Conditions for observe statement to run
-    if (input$queryButton == 0) return()
-    req(input$eudateSlider)
-    if (nullDataframe$eunullDataframe == TRUE) {
-      # Break out of reactive chain
-      req(FALSE)
-    }
-
-    # Dependencies - changes to Date Slider and Unit Selector
-    input$eudateSlider
-    input$euunitSelect
-
-    # Prepare euData into appropriate format for rest of app
-    # Based on date and unit, selected from fluidrow beneath comcode legend
-
-    # Select correct month
-    if (input$eudateSliderAll == TRUE) {
-      euData <- euQueryData$euDataRaw %>% select(-month)
-      if (input$impexpSelect == "Imports") {
-        euData <- euData %>% group_by(country,comcode) %>% summarise(consignments = sum(consignments), price = sum(price), weight = sum(weight))
-      } else if (input$impexpSelect == "Exports") {
-        euData <- euData %>% group_by(comcode,country) %>% summarise(consignments = sum(consignments), price = sum(price), weight = sum(weight))
-      }
-    } else {
-      euData <- euQueryData$euDataRaw %>% filter(month == input$eudateSlider) %>% select(-month)
-    }
-
-    # Select correct unit
-    if (input$euunitSelect == "Price (GBP)"){
-      euData <- euData %>% select(-c(weight,consignments))
-
-    } else if (input$euunitSelect == "Estimated Weight (KG)"){
-      euData <- euData %>% select(-c(price,consignments))
-
-    } else if (input$euunitSelect == "Price Per Kilo (GBP/KG)"){
-      euData$value <- euData$price / euData$weight
-      euData <- euData %>% select(-c(price,weight,consignments))
-
-    } else if (input$euunitSelect == "Number Of Consignments"){
-      euData$value <- euData %>% select(-c(price,weight))
-    }
-
-    # At this point there should be two string and one numeric vector in the euData
-    # dataframe. Now rename that numeric vector, which is the unit used, to value.
-
-    colnames(euData)[colnames(euData) %in% c("price","weight","consignments")] <- "value"
-
-    # Ungroup the data frame.
-    euData <- ungroup(euData)
-
-    # Check again if, after sorting, we're dealing with a blank df.
-    if (dim(euData)[1] == 0) {
-      isolate({
-        # Show a red notification warning the user that no data was found.
-        showNotification(paste0("No EU ",
-                                input$impexpSelect,
-                                " for selected query in month ",
-                                input$eudateSlider,
-                                "."), type = "warning", duration = 0)
-      })
-      # Break out of reactive chain
-      req(FALSE)
-    }
-
-    # Clean and Shape Data --------------------------------------------------
-
-    isolate({
-
-      # COMCODE LEGEND SPECIFIC -----------------------------------------------
-
-      # Create df - list of commodity codes displayed. Match description to second col
-      comcodelegend <- tibble(commoditycode = unique(euData$comcode))
-      comcodelegend <- left_join(comcodelegend, comcodelookup, by = "commoditycode") %>% arrange(commoditycode)
-
-
-      # SANKEY SPECIFIC -------------------------------------------------------
-
-      # Create Links & Nodes dataframe.
-      links <- euData
-      colnames(links) <- c("source","target","value")
-      nodes <- data.frame(unique(c(links$source,links$target)),stringsAsFactors = FALSE)
-      colnames(nodes) = "name"
-
-      # Replace links source, target columns with IDs specified in nodes.
-      # Match to row number in nodes (which is uniquely indexed!)
-      # Note - must be zero indexed, hence match - 1
-      links$source = vapply(links$source, function(x){
-        x = match(x,nodes[,1])-1
-      }, double(1))
-
-      links$target = vapply(links$target, function(x){
-        x = match(x,nodes[,1])-1
-      }, double(1))
-
-      # Replace node codes for country and port with full name
-      nodes$name = vapply(nodes$name,function(x){
-        replacement = desclookup[match(x,desclookup$keyName),"value"]
-        if (is.na(replacement) == FALSE){
-          x = replacement
-          if(nchar(x) > 30){x = substr(x,1,30)}}
-        else {x}
-        return(x)
-      }, character(1))
-
-
-
-      # WORLDMAP SPECIFIC -----------------------------------------------------
-
-      mapWorld <- map_data("world")
-
-      # Convert mapWorld region to iso codes
-      mapWorld$region <- iso.alpha(mapWorld$region)
-
-      # Aggregate by country
-      euData_countrytotal <- euData[,c("country","value")] %>% group_by(country) %>% summarise(value = sum(value))
-
-      # Join values to mapWorld for plotting
-      mapWorld <- left_join(mapWorld,euData_countrytotal, by = c("region" = "country"))
-
-      mapWorld <- left_join(mapWorld, countrycode, by = c("region" = "countrycode"))
-      mapWorld <- mapWorld %>% select(-region)
-      mapWorld <- mapWorld %>% rename(region = "countryname")
-
-      # If using GGPlot, mapWorld DF is sufficient. If using Leaflet, need SpatialPolygons object.
-      mapWorld_relevant <- mapWorld[!is.na(mapWorld$value),]
-      rownames(mapWorld_relevant) <- NULL
-
-      # turn into SpatialPolygons
-      sp_mapWorld = lapply(unique(mapWorld_relevant$group), function(x) {
-        latlonmatrix = as.matrix(mapWorld_relevant[mapWorld_relevant$group == x, c("long", "lat")])
-        countryPolygons = Polygons(list(Polygon(latlonmatrix)), ID = x)
-        return(countryPolygons)
-        return(latlonmatrix)
-      })
-
-      dataPolygons = SpatialPolygonsDataFrame(SpatialPolygons(sp_mapWorld),
-                                              distinct(bind_cols(
-                                                region = mapWorld_relevant$region,
-                                                group = mapWorld_relevant$group,
-                                                value = mapWorld_relevant$value)),
-                                              match.ID = FALSE)
-
-      # TIME SERIES SPECIFIC --------------------------------------------------
-
-      # > We have to have month information, which means portsum/countrysum aren't sufficient.
-      # > We must use the queryData reactive portsumraw/countrysumraw and use dplyr on that.
-      # > Unit selections are slightly different too - price per kilo must be summed by
-      #   comcode, by port, and by country then divided for each month.
-
-      # Select correct unit
-      if (input$euunitSelect == "Price (GBP)"){
-        byComcode <- euQueryData$euDataRaw %>% select(month,comcode,price)
-        byCountry <- euQueryData$euDataRaw %>% select(month,country,price)
-
-      } else if (input$euunitSelect == "Estimated Weight (KG)"){
-        byComcode <- euQueryData$euDataRaw %>% select(month,comcode,weight)
-        byCountry <- euQueryData$euDataRaw %>% select(month,country,weight)
-
-      } else if (input$euunitSelect == "Number of Consignments") {
-        byComcode <- euQueryData$euDataRaw %>% select(month,comcode,consignments)
-        byCountry <- euQueryData$euDataRaw %>% select(month,country,consignments)
-      }
-
-      # Special case for Price Per Kilo
-      if (input$euunitSelect == "Price Per Kilo (GBP/KG)"){
-        byComcode <- euQueryData$euDataRaw %>%
-                       select(month,comcode,price,weight) %>%
-                       mutate(value = price/weight) %>%
-                       select(-c(price,weight)) %>%
-                       group_by(month,comcode) %>% summarise(value = sum(value))
-        byCountry <- euQueryData$euDataRaw %>%
-                       select(month,country,price,weight) %>%
-                       mutate(value = price/weight) %>%
-                       select(-c(price,weight)) %>%
-                       group_by(month,country) %>% summarise(value = sum(value))
-      } else {
-        # else statement required for non-PricePerKilo options
-        colnames(byComcode)[colnames(byComcode) %in% c("price","weight","consignments")] <- "value"
-        colnames(byCountry)[colnames(byCountry) %in% c("price","weight","consignments")] <- "value"
-
-        if (input$eudateSliderAll != TRUE) {
-          byComcode <- byComcode %>% filter(month == input$eudateSlider)
-          byCountry <- byCountry %>% filter(month == input$eudateSlider)
-        }
-
-        # Obtain long format dataframe for time series plot
-        byComcode <- byComcode %>% group_by(month,comcode) %>% summarise(value = sum(value))
-        byCountry <- byCountry %>% group_by(month,country) %>% summarise(value = sum(value))
-      }
-
-      # Ungroup the data frames.
-      byComcode <- ungroup(byComcode)
-      byCountry <- ungroup(byCountry)
-
-      # Replace country codes with full names.
-      byCountry <- byCountry %>%
-                     left_join(desclookup, by = c("country" = "keyName")) %>%
-                     select(-country) %>%
-                     rename(value = value.x, country = value.y)
-
-    # End Isolate
-    })
-
-
-    # Now modify reactive variables with output from isolate() to trigger plot renders.
-    euComcodeLegendData$comcodelegend <- comcodelegend
-    euSankeyData$links <- links
-    euSankeyData$nodes <- nodes
-    euMapData$mapWorld <- mapWorld
-    euMapData$dataPolygons <- dataPolygons
-    euTimeseriesData$byComcode <- byComcode
-    euTimeseriesData$byCountry <- byCountry
-
-  })
-
-  # Fill in the comcode legend ================================================
-
-  output$euComcodeLegend = renderDataTable({
-    if (input$queryButton == 0) return()
-    req(!nullDataframe$eunullDataframe)
-
-    datatable(euComcodeLegendData$comcodelegend,
-              rownames = FALSE,
-              colnames = c("Commodity Code", "Description"),
-              options = list(
-                dom = "tp", # disable search bar at top
-                pageLength = 5, # set number of elements on page
-                columnDefs = list(list(width = "150px", targets = 0)))
-    )}
-  )
-
-  # Fill in the plots =========================================================
-
-  # SANKEY --------------------------------------------------------------------
-
-  output$eusankeyTrade <- renderSankeyNetwork({
-
-  # Suppress output if nothing has been selected yet
-    if (input$queryButton == 0) return()
-    req(!nullDataframe$eunullDataframe)
-    
-    #set variable font size as a function of number of nodes
-    if (nrow(euSankeyData$nodes) < 32) {
-      fsizeeu = ((nrow(euSankeyData$nodes))*(-0.25) + 20) }
-    else { fsizeeu = 12 }
-
-    sankeyNetwork(euSankeyData$links, euSankeyData$nodes,
-                  "source", "target", "value", "name",
-                  fontSize = fsizeeu, nodeWidth = 30)
-  })
-
-
-  # MAP -----------------------------------------------------------------------
-
-  output$euworldMap <- renderLeaflet({
-    if (input$queryButton == 0) return()
-    req(!nullDataframe$eunullDataframe)
-
-    isolate({
-      # Need to scale the map values if we don't want to blow up R...
-      if (max(euMapData$dataPolygons$value) > 1e12) {
-        euMapData$dataPolygons$value <- euMapData$dataPolygons$value/1e9
-        unitSuffix <- "b"
-      } else if (max(euMapData$dataPolygons$value) > 1e9) {
-        euMapData$dataPolygons$value <- euMapData$dataPolygons$value/1e6
-        unitSuffix <- "m"
-      } else {
-        unitSuffix <- ""
-      }
-
-      pal <- colorNumeric(palette = "inferno",
-                          domain = c(0,max(euMapData$dataPolygons$value)),
-                          reverse = TRUE)
-
-      value_popup <- paste0("<strong>Country of Dispatch: </strong>",
-                            euMapData$dataPolygons$region,
-                            "<br><strong>Value: </strong>",
-                            euMapData$dataPolygons$value,
-                            unitSuffix)
-    })
-
-    # Format legend
-    if (input$euunitSelect == "Price (GBP)"){
-      eulegendModifier <- labelFormat(prefix = "Â£", suffix = unitSuffix)
-      eulegendTitle <- "Price"
-    } else if (input$euunitSelect == "Estimated Weight (KG)"){
-      eulegendModifier <- labelFormat(suffix = paste0(unitSuffix, " kg"))
-      eulegendTitle <- "Weight"
-    } else if (input$euunitSelect == "Price Per Kilo (GBP/KG)"){
-      eulegendModifier <- labelFormat(prefix = "Â£", suffix = paste0(unitSuffix, "/kg"))
-      eulegendTitle <- "Price/Weight"
-    } else if (input$euunitSelect == "Number of Consignments"){
-      eulegendModifier <- labelFormat(suffix = paste0(unitSuffix, " Con."))
-      eulegendTitle <- "# Consignments"
-    }
-
-    leaflet(data = euMapData$dataPolygons) %>%
-      setView(lng = 21.22574, lat = 48.2361, zoom = 4) %>%
-      # addTiles() %>%
-      addProviderTiles("CartoDB.Positron") %>%
-      addPolygons(fillColor = ~pal(abs(euMapData$dataPolygons$value)),
-                  smoothFactor = 0.5,
-                  weight = 1,
-                  color = "#000000",
-                  fillOpacity = 0.7,
-                  popup = value_popup) %>%
-      addLegend(pal = pal,
-                values = 0:max(euMapData$dataPolygons$value),
-                opacity = 0.7,
-                title = eulegendTitle,
-                labFormat = eulegendModifier,
-                position = "topright")
-
-  })
-
-
-  # TIME SERIES ---------------------------------------------------------------
-
-  output$eutsByComcode <- renderPlotly({
-      nbars <- length(euTimeseriesData$byComcode$comcode)
-      if (length(unique(euTimeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
-      ggplotly(
-          ggplot(data = euTimeseriesData$byComcode) +
-          geom_col(aes(month,value,fill=comcode), show.legend = TRUE, position = colposition) +
-          labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
-               y = paste(input$euunitSelect, " \n"),
-               fill = "Commodity Codes") +
-          theme(axis.text.x = element_text(angle=45, hjust=1)) +
-          scale_y_continuous(labels = comma) +
-          scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
-      )
-  })
-
-  output$eutsByCountry <- renderPlotly({
-      if (length(unique(euTimeseriesData$byCountry$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
-      nbars <- length(euTimeseriesData$byCountry$country)
-      ggplotly(
-          ggplot(data = euTimeseriesData$byCountry) +
-          geom_col(aes(month,value,fill=country), show.legend = TRUE, position = colposition) +
-          labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
-               y = paste(input$euunitSelect, " \n"),
-               fill = "Countries") +
-          theme(axis.text.x = element_text(angle=45, hjust=1)) +
-          scale_y_continuous(labels = comma) +
-          scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
-      )
-  })
-
-
-  # DATA DOWNLOAD ------------------------------------------------------------
-  output$euDataDownload <- downloadHandler(
-    filename = function() {
-      #"TradeDataVisEUExtract.csv"
-      "TradeDataVisEUExtract.xlsx"
-    },
-    content = function(file) {
-      eudownloadfile <- euQueryData$euDataRaw %>%
-        left_join(comcodelookup, by=c("comcode" = "commoditycode")) %>%
-        left_join(countrycode, by=c("country" = "countrycode")) %>%
-        mutate(comcode2 = substr(comcode, 1, 2)) %>%
-        left_join(comcodelookup, by = c("comcode2" = "commoditycode"))
-      eudownloadfile <- eudownloadfile %>% select("2-Digit Comcode" = comcode2, "2-Digit Description" = description.y, "Commodity Code" = comcode, "Country Code" = country, "Country Name" = countryname, "Month" = month, "Value (Â£)" = price, "Estimated Weight (kg)" = weight, "Number of Consignments" = consignments, "Commodity Description" = description.x)
-      #write.csv(eudownloadfile, file, row.names = FALSE)
-      write.xlsx2(eudownloadfile, file, sheetName = "EU Trade Data", row.names = FALSE)
-    }
-  )
-
-  output$eucomcodedownload <- downloadHandler(
-    filename = function() {
-      "Commoditycodes.xlsx"
-    },
-    content = function(file) {
-      eucomcodedownloadfile <- euComcodeLegendData$comcodelegend %>%
-        select( "Commodity code" = commoditycode, "Description" = description)
-      write.xlsx2(as.data.frame(eucomcodedownloadfile), file, sheetName = "Commodity Codes", row.names = FALSE)
-
-      }
-  )
-
-
   # Advanced DATA DOWNLOAD ------------------------------------------------------------
   output$noneuadvancedownload <- downloadHandler(
     filename = function() {
-      "TradeDataVisNonEUExtract.xlsx"
+      "TradeDataVisExtract.xlsx"
     },
     content = function(file) {
       noneudownloadfile <- queryData$dataraw %>%
@@ -2299,78 +1901,40 @@ server <- function(input, output, session) {
         select(-"comcode")%>%
         rename("comcode"="comcodex")%>%
         group_by(country,comcode,port,month,portname,type,countryname)%>%
-        summarise("price"=sum(price),"weight"=sum(weight))
+        summarise("price"=sum(price),"weight"=sum(weight), "consignments"=sum(consignments))
 
       if(input$noneumonthsum == TRUE) {
-        noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(country,comcode,countryname,port,portname,type)%>%summarise("price"=sum(price),"weight"=sum(weight))}
+        noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(country,comcode,countryname,port,portname,type)%>%summarise("price"=sum(price),"weight"=sum(weight),"consignments"=sum(consignments))}
 
       if(input$noneucountrysum == TRUE){if("month" %in% colnames(noneudownloadfile)){
-        noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(month,comcode,port,portname,type)%>%summarise("price"=sum(price),"weight"=sum(weight))}
+        noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(month,comcode,port,portname,type)%>%summarise("price"=sum(price),"weight"=sum(weight),"consignments"=sum(consignments))}
         else{
-          noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(comcode,port,portname,type)%>%summarise("price"=sum(price),"weight"=sum(weight))}
+          noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(comcode,port,portname,type)%>%summarise("price"=sum(price),"weight"=sum(weight),"consignments"=sum(consignments))}
       }
 
       if(input$noneuportsum == TRUE){
         if("month" %in% colnames(noneudownloadfile)){
           if("country" %in% colnames(noneudownloadfile)){
-            noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(month,comcode,country,countryname)%>%summarise("price"=sum(price),"weight"=sum(weight))}
-          else{noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(month,comcode)%>%summarise("price"=sum(price),"weight"=sum(weight))}
+            noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(month,comcode,country,countryname)%>%summarise("price"=sum(price),"weight"=sum(weight),"consignments"=sum(consignments))}
+          else{noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(month,comcode)%>%summarise("price"=sum(price),"weight"=sum(weight),"consignments"=sum(consignments))}
         }
         else{
           if("country" %in% colnames(noneudownloadfile)){
-            noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(comcode,country,countryname)%>%summarise("price"=sum(price),"weight"=sum(weight))}
-          else{noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(comcode)%>%summarise("price"=sum(price),"weight"=sum(weight))}
+            noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(comcode,country,countryname)%>%summarise("price"=sum(price),"weight"=sum(weight),"consignments"=sum(consignments))}
+          else{noneudownloadfile <-noneudownloadfile%>%ungroup()%>%group_by(comcode)%>%summarise("price"=sum(price),"weight"=sum(weight),"consignments"=sum(consignments))}
         }
       }
 
       noneudownloadfile<-noneudownloadfile%>%
         left_join(comcodelookup, by=c("comcode" = "commoditycode"))%>%
-        select("Commodity code"=one_of("comcode"),"Port Code" = one_of("port"),"Port Name" = one_of("portname"),"Port Type" = one_of("type"),"Country Code" = one_of("country"),"Country Name" = one_of("countryname"),"Month" = one_of("month"),"Value (Â£)" = one_of("price"),"Weight (kg)" = one_of("weight"),"Commodity description" = one_of("description"))
+        select("Commodity code"=one_of("comcode"),"Port Code" = one_of("port"),"Port Name" = one_of("portname"),"Port Type" = one_of("type"),"Country Code" = one_of("country"),"Country Name" = one_of("countryname"),"Month" = one_of("month"),"Value (Â£)" = one_of("price"),"Weight (kg)" = one_of("weight"),"Number of Consignments" = one_of("consignments"), "Commodity description" = one_of("description")) 
 
-      write.xlsx2(as.data.frame(noneudownloadfile), file, sheetName = "Non-EU Trade Data", row.names = FALSE)
+      write.xlsx2(as.data.frame(noneudownloadfile), file, sheetName = "Trade Data", row.names = FALSE)
     }
   )
 
 
 
-
-
-
-  output$euadvancedownload <- downloadHandler(
-    filename = function() {
-      "TradeDataVisEUExtract.xlsx"
-    },
-    content = function(file) {
-      eudownloadfile <- euQueryData$euDataRaw %>%
-        left_join(countrycode, by=c("country" = "countrycode"))
-
-      #Going to have issues with comcodes that are less than 8 digits long - i think these exist?
-      #Should change to finding parent commodity code
-      eudownloadfile<-eudownloadfile%>%
-        mutate(comcodex = substr(comcode,1,as.numeric(substr(input$eucnlevel,1,1))))%>%
-        select(-"comcode")%>%
-        rename("comcode"="comcodex")%>%
-        group_by(country,comcode,month,countryname)%>%
-        summarise("consignments"=sum(consignments),"price"=sum(price),"weight"=sum(weight))%>%
-        left_join(comcodelookup, by=c("comcode" = "commoditycode"))
-
-      if(input$eumonthsum == TRUE) {
-        eudownloadfile <-eudownloadfile%>%ungroup()%>%group_by(country,comcode,countryname,description)%>%summarise("consignments"=sum(consignments),"price"=sum(price),"weight"=sum(weight))}
-
-      if(input$eucountrysum == TRUE){if("month" %in% colnames(eudownloadfile)){
-        eudownloadfile <-eudownloadfile%>%ungroup()%>%group_by(month,comcode,description)%>%summarise("consignments"=sum(consignments),"price"=sum(price),"weight"=sum(weight))}
-        else{
-          eudownloadfile <-eudownloadfile%>%ungroup()%>%group_by(comcode,description)%>%summarise("consignments"=sum(consignments),"price"=sum(price),"weight"=sum(weight))}
-      }
-
-      #Need to select relevant columns and add descriptions/ country names
-      eudownloadfile <- eudownloadfile %>%
-#        select(one_of("comcode","description","country","countryname","month","consignments","price","weight"))
-        select("Commodity code" = one_of("comcode"),"Country code"=one_of("country"),"Country name"=one_of("countryname"),
-               "Month"=one_of("month"),"Value (Â£)"=one_of("price"),"Estimated weight (kg)"=one_of("weight"),"Number of Consignments"=one_of("consignments"),"Commodity Description"=one_of("description"))
-        write.xlsx2(as.data.frame(eudownloadfile), file, sheetName = "EU Trade Data", row.names = FALSE)
-    }
-  )
 
   # FF download -------------------------------------------------------------
   output$foodfeeddownload <- downloadHandler(
@@ -2411,6 +1975,6 @@ shinyApp(ui = ui, server = server)
 # JUNKYARD ###################################################################
 
 # Disconnect All Database Cons
-#pg = dbDriver("PostgreSQL");lapply(dbListConnections(pg), dbDisconnect) 
+#pg = dbDriver("PostgreSQL");lapply(dbListConnections(pg), dbDisconnect)
 
 
