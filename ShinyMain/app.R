@@ -448,6 +448,17 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
 
                # Create slider/unit bar
                fluidRow(
+  
+                 
+                 tags$style("
+                              .irs-bar-edge,
+                              .irs-bar
+                             {
+                                background: #e6e6e6;
+                                border-color: #cfcfcf;
+                              }
+                              "),
+                 
                  column(2,
                    tags$label("Select Month:"),
                    checkboxInput("dateSliderAll", label = "All", value = TRUE)
@@ -1670,7 +1681,6 @@ server <- function(input, output, session) {
 
   # SANKEY --------------------------------------------------------------------
 
-
   output$sankeyTrade <-  renderSankeyNetwork({
 
   # Suppress output if nothing has been selected yet
@@ -1689,6 +1699,8 @@ server <- function(input, output, session) {
   # } else  if (nrow(sankeyData$nodes) < 32) {
   #   fsize = ((nrow(sankeyData$nodes))*(-0.25) + 20) }
   #  else { fsize = 12 }
+
+  
   
   if(nrow(sankeyData$nodes) < 32) {
     fsize = -0.006*(nrow(sankeyData$nodes)-3)^2 + 17
@@ -1795,7 +1807,7 @@ server <- function(input, output, session) {
    output$tsByComcode <- renderPlotly({
 
 
-       if (length(unique(timeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
+      # if (length(unique(timeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
        nbars <- length(timeseriesData$byComcode$comcode)
        ggplotly(
            ggplot(data = timeseriesData$byComcode) +
@@ -1809,7 +1821,29 @@ server <- function(input, output, session) {
            scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
        )
 
+       
+       # ggplotly(
+       #   ggplot(data = timeseriesData$byComcode) +
+       #     geom_line(aes(month, value, color=comcode), show.legend = TRUE, group=1) +
+       #     geom_point(aes(month, value, color=comcode)) +
+       #   #  geom_text(aes(month, value, label = comcode)) +
+       #     labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
+       #        y = paste(input$unitSelect, " \n"),
+       #        color = "Commodity") +
+       #              theme_bw() +
+       #            theme(axis.text.x = element_text(angle=45, hjust=1)) +
+       #            scale_y_continuous(labels = comma)
+       # )
+       
+       
+       
+       
+       
+       
+       
    })
+  
+  
 
 
   output$tsByCountry <- renderPlotly({
