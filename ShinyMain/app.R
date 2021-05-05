@@ -23,7 +23,7 @@ library("shinycssloaders")
 if(require("tidyverse") == FALSE) {install.packages("tidyverse")}
 library("tidyverse")
 
-# if(require("devtools") == FALSE) {install.packages("devtools")}
+ if(require("devtools") == FALSE) {install.packages("devtools")}
 library("devtools")
 
 if(require("RPostgreSQL") == FALSE) {install.packages("RPostgreSQL")}
@@ -71,8 +71,12 @@ library("scales")
 if(require("shinythemes") == FALSE) {install.packages("shinythemes")}
 library("shinythemes")
 
-if(require("xlsx") == FALSE) {install.packages("xlsx")}
-library("xlsx")
+# if(require("xlsx") == FALSE) {install.packages("xlsx")}
+# library("xlsx")
+# 
+# if(require("writexl") == FALSE) {install.packages("writexl")}
+# library("writexl")
+
 
 # Function Definitions -------------------------------------------------------
 
@@ -1807,7 +1811,7 @@ server <- function(input, output, session) {
    output$tsByComcode <- renderPlotly({
 
 
-      # if (length(unique(timeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
+       if (length(unique(timeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
        nbars <- length(timeseriesData$byComcode$comcode)
        ggplotly(
            ggplot(data = timeseriesData$byComcode) +
@@ -1885,7 +1889,7 @@ server <- function(input, output, session) {
   output$dataDownload <- downloadHandler(
     filename = function() {
       # "TradeDataVisNonEUExtract.csv"
-      "TradeDataVisExtract.xlsx"
+      "TradeDataVisExtract.csv"
     },
     content = function(file) {
       #Define metadata information tab
@@ -1899,20 +1903,22 @@ server <- function(input, output, session) {
         left_join(comcodelookup, by = c("comcode2" = "commoditycode"))
         downloadfile <- downloadfile %>% select("2-Digit Comcode" = comcode2, "2-Digit Description" = description.y, "Commodity Code" = comcode, "Port Code" = port, "Port Name" = portname, "Port Type" = type, "Country Code" = country, "Country Name" = countryname, "Month" = month, "Value (Â£)" = price, "Weight (kg)" = weight, "Number of Consignments" = consignments, "Commodity Description" = description.x) %>%
           mutate(`Number of Consignments` = ifelse(`Number of Consignments` == 0, "", `Number of Consignments`))
-      write.xlsx2(downloadfile, file, sheetName = "Trade Data", row.names = FALSE)
+      #write.xlsx2(downloadfile, file, sheetName = "Trade Data", row.names = FALSE)
+     # write_xlsx()
+      write.csv(downloadfile, file, row.names = FALSE)
       #write.xlsx2(noneu_info,file,sheetName = "Information", append = TRUE,row.names = FALSE,col.names=FALSE)
     }
   )
 
   output$noneucomcodedownload <- downloadHandler(
     filename = function() {
-      "Commoditycodes.xlsx"
+      "Commoditycodes.csv"
     },
     content = function(file) {
       comcodedownloadfile <- comcodeLegendData$comcodelegend%>%
         select( "Commodity code" = commoditycode, "Description" = description)
-      write.xlsx2(as.data.frame(comcodedownloadfile), file, sheetName = "Commodity Codes", row.names = FALSE)
-
+      #write.xlsx2(as.data.frame(comcodedownloadfile), file, sheetName = "Commodity Codes", row.names = FALSE)
+      write.csv(as.data.frame(comcodedownloadfile), file, row.names = FALSE)
     }
   )
 
@@ -1921,7 +1927,7 @@ server <- function(input, output, session) {
   # Advanced DATA DOWNLOAD ------------------------------------------------------------
   output$noneuadvancedownload <- downloadHandler(
     filename = function() {
-      "TradeDataVisExtract.xlsx"
+      "TradeDataVisExtract.csv"
     },
     content = function(file) {
       noneudownloadfile <- queryData$dataraw %>%
@@ -1963,7 +1969,8 @@ server <- function(input, output, session) {
         left_join(comcodelookup, by=c("comcode" = "commoditycode"))%>%
         select("Commodity code"=one_of("comcode"),"Port Code" = one_of("port"),"Port Name" = one_of("portname"),"Port Type" = one_of("type"),"Country Code" = one_of("country"),"Country Name" = one_of("countryname"),"Month" = one_of("month"),"Value (Â£)" = one_of("price"),"Weight (kg)" = one_of("weight"),"Number of Consignments" = one_of("consignments"), "Commodity description" = one_of("description")) 
 
-      write.xlsx2(as.data.frame(noneudownloadfile), file, sheetName = "Trade Data", row.names = FALSE)
+      #write.xlsx2(as.data.frame(noneudownloadfile), file, sheetName = "Trade Data", row.names = FALSE)
+      write.csv(as.data.frame(noneudownloadfile), file, row.names = FALSE)
     }
   )
 
@@ -1973,7 +1980,7 @@ server <- function(input, output, session) {
   # FF download -------------------------------------------------------------
   output$foodfeeddownload <- downloadHandler(
     filename = function() {
-      "Foodfeedlist.xlsx"
+      "Foodfeedlist.csv"
     },
     content = function(file) {
      #  downloadfile <- allfoodfeed %>%
@@ -1985,7 +1992,8 @@ server <- function(input, output, session) {
       downloadfile <- allfoodfeed %>%
         left_join(comcodelookup, by=c("comcodeff" = "commoditycode")) %>%
         select( "Commodity code" = "comcodeff", "Description" = "description", "Food" = "food", "Feed" = "feed", "POAO" = "poao", "FNAO" = "fnao")
-      write.xlsx2(as.data.frame(downloadfile), file, sheetName = "Food and feed list", row.names = FALSE)
+      #write.xlsx2(as.data.frame(downloadfile), file, sheetName = "Food and feed list", row.names = FALSE)
+      write.csv(as.data.frame(downloadfile), file, row.names = FALSE)
     }
   )
 
