@@ -509,8 +509,9 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                                   # fluidRow(
                                   # column(9),column(3,
                                   # sliderInput("fontsizeSelect", "Select Font Size:", min = 1, max = 10, value = 3, width = 200))),
-                                  sankeyNetworkOutput(outputId = "sankeyTrade") %>% withSpinner(type=6)),
-                         tabPanel("Country & Port Only", sankeyNetworkOutput(outputId = "pcSankeyTrade") %>% withSpinner(type=6))
+                                  plotlyOutput(outputId = "sankeyTrade") %>% withSpinner(type=6)),
+                         tabPanel("Country & Commodity Only", plotlyOutput(outputId = "ccSankeyTrade") %>% withSpinner(type=6)),
+                         tabPanel("Country & Port Only", plotlyOutput(outputId = "pcSankeyTrade") %>% withSpinner(type=6))
                        )
                      ),
                      tabPanel("MAP", leafletOutput(outputId = "worldMap", height = 600) %>% withSpinner(type=6)),
@@ -635,7 +636,7 @@ server <- function(input, output, session) {
                               countrysumraw = NULL, countrysumraw_EU = NULL, countrysumraw_NonEU = NULL,
                               comcodesumraw = NULL, comcodesumraw_EU = NULL, comcodesumraw_NonEU = NULL)
   comcodeLegendData <- reactiveValues(comcodelegend = NULL)
-  sankeyData <- reactiveValues(links = NULL, nodes = NULL, pclinks = NULL, pcnodes = NULL)
+  sankeyData <- reactiveValues(links = NULL, nodes = NULL, pclinks = NULL, pcnodes = NULL, cclinks = NULL, ccnodes = NULL)
   mapData <- reactiveValues(mapWorld = NULL)
   timeseriesData <- reactiveValues(byComcode = NULL, byCountry = NULL, byPort = NULL)
 
@@ -1453,7 +1454,7 @@ server <- function(input, output, session) {
       colnames(link_countrysum) <- c("source","target","value")
 
 
-
+      
       links <- bind_rows(link_portsum,link_countrysum)
       nodes <- data.frame(unique(c(links$source,links$target)),stringsAsFactors = FALSE)
       colnames(nodes) = "name"
@@ -1506,6 +1507,37 @@ server <- function(input, output, session) {
         else {x}
         return(x)
       }, character(1))
+      
+      
+      # COUNTRY -> COMMODITY SANKEY SPECIFIC ----------------------------
+      
+      cclinks <- portsum
+      colnames(cclinks) <- c("source","target","value")
+      ccnodes <- data.frame(unique(c(cclinks$source,cclinks$target)),stringsAsFactors = FALSE)
+      colnames(ccnodes) = "name"
+      
+      # Replace cclinks source, target columns with IDs specified in pcnodes.
+      # Match to row number in ccnodes (which is uniquely indexed!)
+      # Note - must be zero indexed, hence match - 1
+      cclinks$source = vapply(cclinks$source, function(x){
+        x = match(x,ccnodes[,1])-1
+      }, double(1))
+      
+      cclinks$target = vapply(cclinks$target, function(x){
+        x = match(x,ccnodes[,1])-1
+      }, double(1))
+      
+      # Replace node codes for country and port with full name
+      ccnodes$name = vapply(ccnodes$name,function(x){
+        replacement = desclookup[match(x,desclookup$keyName),"value"]
+        if (is.na(replacement) == FALSE){
+          x = replacement
+          if(nchar(x) > 30){x = substr(x,1,30)}}
+        else {x}
+        return(x)
+      }, character(1))
+      
+      
 
       # WORLDMAP SPECIFIC -----------------------------------------------------
       mapWorld <- map_data("world")
@@ -1656,6 +1688,8 @@ server <- function(input, output, session) {
     sankeyData$nodes <- nodes
     sankeyData$pclinks <- pclinks
     sankeyData$pcnodes <- pcnodes
+    sankeyData$cclinks <- cclinks
+    sankeyData$ccnodes <- ccnodes
     mapData$mapWorld <- mapWorld
     mapData$dataPolygons <- dataPolygons
     timeseriesData$byComcode <- byComcode
@@ -1685,35 +1719,78 @@ server <- function(input, output, session) {
 
   # SANKEY --------------------------------------------------------------------
 
-  output$sankeyTrade <-  renderSankeyNetwork({
+
+  # output$sankeyTrade <-  renderSankeyNetwork({
+  output$sankeyTrade <- renderPlotly({
 
   # Suppress output if nothing has been selected yet
-    if (input$queryButton == 0) return()
-  req(!nullDataframe$nullDataframe)
+  #   if (input$queryButton == 0) return()
+  # req(!nullDataframe$nullDataframe)
 
   # if(dim(sankeyData$nodes)[1] == 0) {return()
   # req(!nullDataframe$nullDataframe)
   # }
 
-   # fsize <- (input$fontsizeSelect)*2.4 + 7
-
- # set variable font size as a function of number of nodes
-  # if(nrow(sankeyData$nodes) < 10) {
-  #   fsize = 17
-  # } else  if (nrow(sankeyData$nodes) < 32) {
-  #   fsize = ((nrow(sankeyData$nodes))*(-0.25) + 20) }
-  #  else { fsize = 12 }
-
-  
   
   if(nrow(sankeyData$nodes) < 32) {
     fsize = -0.006*(nrow(sankeyData$nodes)-3)^2 + 17
   } else {fsize = 12}
+  # 
+  #    sankeyNetwork(sankeyData$links, sankeyData$nodes,
+  #                  "source", "target", "value", "name",
+  #                  fontSize = fsize, nodeWidth = 30, height=500, width = 100)
+  
+    
+    if(input$unitSelect == "Price (GBP)"){
+        suffix = " (GBP)"
+      } else if(input$unitSelect == "Weight (KG)"){
+        suffix = " (KG)"
+      } else if(input$unitSelect == "Price Per Kilo (GBP/KG)"){
+        suffix = " (GBP/KG)"
+      } else {
+        suffix = ""
+      }
+  
+  plot_ly(
+    type = "sankey",
+    orientation = "h",
+    valuesuffix = suffix,
+    valueformat = ",f",
 
-     sankeyNetwork(sankeyData$links, sankeyData$nodes,
-                   "source", "target", "value", "name",
-                   fontSize = fsize, nodeWidth = 30)
-     
+    node = list(
+      label = sankeyData$nodes$name,
+      # color = c("blue", "blue", "blue", "blue", "blue", "blue"),
+       pad = 15,
+       thickness = 40,
+      hovertemplate='%{label} - %{value}<extra></extra>',
+      hoverlabel = list(
+        bordercolor = "black",
+        bgcolor = "white",
+        font = list(
+          color = "black",
+          size = 18
+      )),
+      line = list(
+        color = "black",
+        width = 0.5
+      )
+     ),
+
+    link = list(
+      source = sankeyData$links$source,
+      target = sankeyData$links$target,
+      value =  sankeyData$links$value,
+      hoverinfo= "none"
+    )
+  ) %>% layout(
+    font = list(
+      size = fsize
+    )
+  )
+  
+  
+  
+  
 
      
   })
@@ -1722,7 +1799,9 @@ server <- function(input, output, session) {
 
   # COUNTRY -> PORT SANKEY -----------------------------------------------------
 
-  output$pcSankeyTrade <- renderSankeyNetwork({
+  # output$pcSankeyTrade <- renderSankeyNetwork({
+      output$pcSankeyTrade <- renderPlotly({
+
 
   # Suppress output if nothing has been selected yet
     if (input$queryButton == 0) return()
@@ -1732,12 +1811,136 @@ server <- function(input, output, session) {
     if (nrow(sankeyData$pcnodes) < 32) {
       fsizepc = -0.006*(nrow(sankeyData$pcnodes)-3)^2 + 17 }
     else { fsizepc = 12 }
+# 
+#     sankeyNetwork(sankeyData$pclinks, sankeyData$pcnodes,
+#                   "source", "target", "value", "name",
+#                   fontSize = fsizepc, nodeWidth = 30)
+    
+        if(input$unitSelect == "Price (GBP)"){
+        suffix = " (GBP)"
+      } else if(input$unitSelect == "Weight (KG)"){
+        suffix = " (KG)"
+      } else if(input$unitSelect == "Price Per Kilo (GBP/KG)"){
+        suffix = " (GBP/KG)"
+      } else {
+        suffix = ""
+      }
+  
+  plot_ly(
+    type = "sankey",
+    orientation = "h",
+    valuesuffix = suffix,
+    valueformat = ",f",
 
-    sankeyNetwork(sankeyData$pclinks, sankeyData$pcnodes,
-                  "source", "target", "value", "name",
-                  fontSize = fsizepc, nodeWidth = 30)
+    node = list(
+      label = sankeyData$pcnodes$name,
+      # color = c("blue", "blue", "blue", "blue", "blue", "blue"),
+       pad = 15,
+       thickness = 40,
+      hovertemplate='%{label} - %{value}<extra></extra>',
+      hoverlabel = list(
+        bordercolor = "black",
+        bgcolor = "white",
+        font = list(
+          color = "black",
+          size = 18
+      )),
+      line = list(
+        color = "black",
+        width = 0.5
+      )
+     ),
+
+    link = list(
+      source = sankeyData$pclinks$source,
+      target = sankeyData$pclinks$target,
+      value =  sankeyData$pclinks$value,
+      hoverinfo= "none"
+    )
+  ) %>% layout(
+    font = list(
+      size = fsizepc
+    )
+  )
+    
   })
 
+  
+  # COUNTRY -> COMCODE SANKEY --------------------------------------------------
+  
+  # output$ccSankeyTrade <- renderSankeyNetwork({
+      output$ccSankeyTrade <- renderPlotly({
+
+    
+    # Suppress output if nothing has been selected yet
+    if (input$queryButton == 0) return()
+    req(!nullDataframe$nullDataframe)
+    
+    #set variable font size as a function of number of nodes
+    if (nrow(sankeyData$ccnodes) < 32) {
+      fsizecc = -0.006*(nrow(sankeyData$ccnodes)-3)^2 + 17 }
+    else { fsizecc = 12 }
+    # 
+    # sankeyNetwork(sankeyData$cclinks, sankeyData$ccnodes,
+    #               "source", "target", "value", "name",
+    #               fontSize = fsizecc, nodeWidth = 30)
+    
+    
+        if(input$unitSelect == "Price (GBP)"){
+        suffix = " (GBP)"
+      } else if(input$unitSelect == "Weight (KG)"){
+        suffix = " (KG)"
+      } else if(input$unitSelect == "Price Per Kilo (GBP/KG)"){
+        suffix = " (GBP/KG)"
+      } else {
+        suffix = ""
+      }
+  
+  plot_ly(
+    type = "sankey",
+    orientation = "h",
+    valuesuffix = suffix,
+    valueformat = ",f",
+
+    node = list(
+      label = sankeyData$ccnodes$name,
+      # color = c("blue", "blue", "blue", "blue", "blue", "blue"),
+       pad = 15,
+       thickness = 40,
+      hovertemplate='%{label} - %{value}<extra></extra>',
+      hoverlabel = list(
+        bordercolor = "black",
+        bgcolor = "white",
+        font = list(
+          color = "black",
+          size = 18
+      )),
+      line = list(
+        color = "black",
+        width = 0.5
+      )
+     ),
+
+    link = list(
+      source = sankeyData$cclinks$source,
+      target = sankeyData$cclinks$target,
+      value =  sankeyData$cclinks$value,
+      hoverinfo= "none"
+    )
+  ) %>% layout(
+    font = list(
+      size = fsizecc
+    )
+  )
+    
+    
+    
+    
+  })
+  
+  
+  
+  
   # MAP -----------------------------------------------------------------------
 
   output$worldMap <- renderLeaflet({
@@ -1811,39 +2014,33 @@ server <- function(input, output, session) {
    output$tsByComcode <- renderPlotly({
 
 
-       if (length(unique(timeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
-       nbars <- length(timeseriesData$byComcode$comcode)
-       ggplotly(
-           ggplot(data = timeseriesData$byComcode) +
-           geom_col(aes(month,value,fill=comcode), show.legend = TRUE, position = colposition) +
-           labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
-                y = paste(input$unitSelect, " \n"),
-                fill = "Commodity Codes") +
-             theme_bw() +
-           theme(axis.text.x = element_text(angle=45, hjust=1)) +
-           scale_y_continuous(labels = comma) +
-           scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
-       )
+       # if (length(unique(timeseriesData$byComcode$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
+       # nbars <- length(timeseriesData$byComcode$comcode)
+       # ggplotly(
+       #     ggplot(data = timeseriesData$byComcode) +
+       #     geom_col(aes(month,value,fill=comcode), show.legend = TRUE, position = colposition) +
+       #     labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
+       #          y = paste(input$unitSelect, " \n"),
+       #          fill = "Commodity Codes") +
+       #       theme_bw() +
+       #     theme(axis.text.x = element_text(angle=45, hjust=1)) +
+       #     scale_y_continuous(labels = comma) +
+       #     scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
+       # )
 
        
-       # ggplotly(
-       #   ggplot(data = timeseriesData$byComcode) +
-       #     geom_line(aes(month, value, color=comcode), show.legend = TRUE, group=1) +
-       #     geom_point(aes(month, value, color=comcode)) +
-       #   #  geom_text(aes(month, value, label = comcode)) +
-       #     labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
-       #        y = paste(input$unitSelect, " \n"),
-       #        color = "Commodity") +
-       #              theme_bw() +
-       #            theme(axis.text.x = element_text(angle=45, hjust=1)) +
-       #            scale_y_continuous(labels = comma)
-       # )
-       
-       
-       
-       
-       
-       
+       ggplotly(
+         ggplot(data = timeseriesData$byComcode) +
+           geom_line(aes(month, value, color=comcode), show.legend = TRUE, group=1) +
+           geom_point(aes(month, value, color=comcode)) +
+         #  geom_text(aes(month, value, label = comcode)) +
+           labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
+              y = paste(input$unitSelect, " \n"),
+              color = "Commodity") +
+                    theme_bw() +
+                  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+                  scale_y_continuous(labels = comma)
+       )
        
    })
   
@@ -1851,35 +2048,66 @@ server <- function(input, output, session) {
 
 
   output$tsByCountry <- renderPlotly({
-      if (length(unique(timeseriesData$byCountry$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
-      nbars <- length(timeseriesData$byCountry$country)
+    
+      # if (length(unique(timeseriesData$byCountry$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
+      # nbars <- length(timeseriesData$byCountry$country)
+      # ggplotly(
+      #     ggplot(data = timeseriesData$byCountry) +
+      #     geom_col(aes(month,value,fill=country), show.legend = TRUE, position = colposition) +
+      #     labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
+      #          y = paste(input$unitSelect, " \n"),
+      #          fill = "Countries") +
+      #       theme_bw() +
+      #     theme(axis.text.x = element_text(angle=45, hjust=1)) +
+      #     scale_y_continuous(labels = comma) +
+      #     scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
+      # )
+      
+      
       ggplotly(
-          ggplot(data = timeseriesData$byCountry) +
-          geom_col(aes(month,value,fill=country), show.legend = TRUE, position = colposition) +
+        ggplot(data = timeseriesData$byCountry) +
+          geom_line(aes(month, value, color=country), show.legend = TRUE, group=1) +
+          geom_point(aes(month, value, color=country)) +
+          #  geom_text(aes(month, value, label = comcode)) +
           labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
                y = paste(input$unitSelect, " \n"),
-               fill = "Countries") +
-            theme_bw() +
+               color = "Country") +
+          theme_bw() +
           theme(axis.text.x = element_text(angle=45, hjust=1)) +
-          scale_y_continuous(labels = comma) +
-          scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
+          scale_y_continuous(labels = comma) 
       )
+      
   })
 
   output$tsByPort <- renderPlotly({
-      if (length(unique(timeseriesData$byPort$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
-      nbars <- length(timeseriesData$byPort$port)
-      ggplotly(
-          ggplot(data = timeseriesData$byPort) +
-          geom_col(aes(month,value,fill=port), show.legend = TRUE, position = colposition) +
-          labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
-               y = paste(input$unitSelect, " \n"),
-               fill = "Ports") +
-            theme_bw()+
-          theme(axis.text.x = element_text(angle=45, hjust=1)) +
-          scale_y_continuous(labels = comma) +
-          scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
-      )
+      # if (length(unique(timeseriesData$byPort$month)) < 7) {colposition = "dodge"} else {colposition = "stack"}
+      # nbars <- length(timeseriesData$byPort$port)
+      # ggplotly(
+      #     ggplot(data = timeseriesData$byPort) +
+      #     geom_col(aes(month,value,fill=port), show.legend = TRUE, position = colposition) +
+      #     labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
+      #          y = paste(input$unitSelect, " \n"),
+      #          fill = "Ports") +
+      #       theme_bw()+
+      #     theme(axis.text.x = element_text(angle=45, hjust=1)) +
+      #     scale_y_continuous(labels = comma) +
+      #     scale_fill_manual(values = rainbow(nbars, s=.6, v=.8)[sample(1:nbars,nbars)])
+      # )
+    
+    ggplotly(
+      ggplot(data = timeseriesData$byPort) +
+        geom_line(aes(month, value, color=port), show.legend = TRUE, group=1) +
+        geom_point(aes(month, value, color=port)) +
+        #  geom_text(aes(month, value, label = comcode)) +
+        labs(x = paste(substr(input$impexpSelect,1,nchar(input$impexpSelect)-1),"Month"),
+             y = paste(input$unitSelect, " \n"),
+             color = "Port") +
+        theme_bw() +
+        theme(axis.text.x = element_text(angle=45, hjust=1)) +
+        scale_y_continuous(labels = comma)
+    )
+    
+    
   })
 
 
