@@ -268,19 +268,31 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                   tags$ul(
                            tags$li("Sankey Diagram - a network diagram describing the flow of absolute quantities (including Price and Weight) between countries, commodities and ports. You can hover over a connection to find the value."),
                            tags$li("Interactive World Map - a coloured map of the world showing where our imports/exports are coming from/to; the colours of each country tells you the value for your selected unit, and you can click a country for more information."),
+                           tags$li("Time Series by Comcode/Country/Port - these show how imports/exports vary over the selected time period; you can select whether you view the time series by country, commodity or port."),
                            tags$li("Bar Charts by Comcode/Country/Port - these show the proportion of the imports/exports contributed by each country, commodity and port.")
                        )
                   ),
-           tags$p("Data can also be downloaded for further analysis using this application.  Please note that port data is not available for EU imports or for EU exports before 2021.  Additionally, number of consignments data is only available for EU trade before 2021."),
+           tags$p("Data can also be downloaded for further analysis using this application."),
            tags$hr()),
            column(4,
                   HTML("<div class=\"alert alert-dismissible alert-success\">
                     <h5> <strong> Update Information: </strong> </h5> 
-                    The data used by this application is normally updated by the <strong> 13th of every month </strong>. <br>
-                    However, on occasions when the publishing date of HMRC trade data is delayed, the update will occur up to a few days after the 13th. <br>
-                    Please note, there is a two month time lag between the current date and the available HMRC data. For instance, January's trade data is updated on March 13th, February's on April 13th, and so on.
+                    The data used by this application is normally updated by the <strong> 16th of every month </strong>. <br>
+                    However, on occasions when the publishing date of HMRC trade data is delayed, the update will occur up to a few days after the 16th. <br>
+                    Please note, there is a two month time lag between the current date and the available HMRC data. For instance, January's trade data is updated on March 16th, February's on April 16th, and so on.
                     
                 </div>")),
+
+
+           column(12,
+           tags$h3("Post-Transition Period Changes"),
+           tags$p("As of January 2021, the UK entered the post-transition period.  As a result, UKTradeInfo's trade data for 2021 onwards has undergone a couple of changes that will affect this app:"),
+                  tags$ul(
+                           tags$li("Number of consignments data is unavailable for all imports and exports (EU or non-EU) from 2021 onwards."),
+                           tags$li("Previously, port data was only available for non-EU imports/exports, however, port data is now also available for EU exports from 2021 onwards. Port data remains unavailable for EU imports.")
+                  ),
+           tags$p("For more information on the changes to UKTradeInfo's trade data, please click ", tags$a(href = "https://www.uktradeinfo.com/news/methodology-changes-to-trade-in-goods-statistics-from-march-2021/",  "here"), "."),
+           tags$hr()),
            column(12,
            tags$h3("How to Use the Application"),
            tags$p("To use the application, first navigate to the query panel tab - this is where you make your selections. There are two options for querying data: either selecting by commodity code or selecting a filter for food/feed. To search by commodity code, use the boxes to input commodity codes at the level of detail you require (2 - 8 digits). You can search for a product in the commodity code search table at the bottom of the page. If you would prefer to search using a food/feed filter please select the 'By Commodity Type' tab. This will allow you to use the buttons to select: all food & feed, just food, or just feed, as well as all food of non-animal origin (FNAO) & all products of animal origin (POAO), just FNAO or just POAO.  Please note that these lists have been compiled by the FSA and are not official data sources, and some commodity codes are classified as both food/feed and POAO/FNAO. To see this list of food/feed commodity codes, please download using the button below."),
@@ -525,6 +537,18 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                          tabPanel("By Country", plotlyOutput(outputId = "tsByCountry") %>% withSpinner(type=6)),
                          tabPanel("By Port", plotlyOutput(outputId = "tsByPort") %>% withSpinner(type=6))
                        )
+                     ),
+                     tabPanel("BAR CHART",
+                        tabsetPanel(
+                          tabPanel("By Commodity Code", plotlyOutput(outputId = "bcByComcode") %>% withSpinner(type=6),#Test image download button
+                                   fluidRow(
+                                     column(10)#,
+                                     #column(2, downloadButton("downloadplotnoneu", "Download plot"))
+                                   )),
+                          tabPanel("By Country", plotlyOutput(outputId = "bcByCountry") %>% withSpinner(type=6)),
+                          tabPanel("By Port", plotlyOutput(outputId = "bcByPort") %>% withSpinner(type=6))
+                        )       
+                       
                      )
                    )
                  )
@@ -540,7 +564,11 @@ tags$head(HTML("<!-- Global site tag (gtag.js) - Google Analytics -->
                fluidRow(
                  column(2, downloadButton("noneucomcodedownload", "Download Commodity Codes"))
                ),
-               br()
+               br(),
+           
+           fluidRow(dataTableOutput('testtable1')),
+           fluidRow(dataTableOutput('testtable2')),
+           fluidRow(dataTableOutput('testtable3'))
 
 
              ),
@@ -639,15 +667,11 @@ server <- function(input, output, session) {
   sankeyData <- reactiveValues(links = NULL, nodes = NULL, pclinks = NULL, pcnodes = NULL, cclinks = NULL, ccnodes = NULL)
   mapData <- reactiveValues(mapWorld = NULL)
   timeseriesData <- reactiveValues(byComcode = NULL, byCountry = NULL, byPort = NULL)
+  barchartData <- reactiveValues(byComcode = NULL, byCountry = NULL, byPort = NULL)
+  
+  #testData <- reactiveValues(portsumtest = NULL)
 
   nullDataframe <- reactiveValues(nullDataframe = NULL, eunullDataframe = NULL, comcodequery = NULL)
-
-  # euQueryData <- reactiveValues(euDataRaw = NULL)
-  # euComcodeLegendData <- reactiveValues(comcodelegend = NULL)
-  # euSankeyData <- reactiveValues(links = NULL, nodes = NULL)
-  # euMapData <- reactiveValues(mapWorld = NULL)
-  # euTimeseriesData <- reactiveValues(byComcode = NULL, byCountry = NULL)
-
 
 
 
@@ -880,23 +904,6 @@ server <- function(input, output, session) {
 
 
   # QUERY EXECUTION ============================================================
-
-#  observeEvent(input$removenotification,{
-#  if (!is.null(noneusuccess)) {removeNotification(noneusuccess)}
-#  if (!is.null(eusuccess)) {removeNotification(eusuccess)}
-#  if (!is.null(noneunosuccess))
-#    removeNotification(noneunosuccess)
-#  if (!is.null(eunosuccess))
-#    removeNotification(eunosuccess)
-
-
-  # Defining messages
-#  noneusuccess <<- NULL
-#  eusuccess <<- NULL
-#  noneunosuccess <<- NULL
-#  eunosuccess <<- NULL
-#  })
-
 
 
 
@@ -1375,6 +1382,10 @@ server <- function(input, output, session) {
       countrysum <- countrysum %>% select(-c(price,weight,consignments))
       comcodesum$value <- comcodesum$price / comcodesum$weight
       comcodesum <- comcodesum %>% select(-c(price,weight,consignments))
+      
+      # portsum <- portsum
+      # countrysum <- countrysum
+      # comcodesum <- comcodesum
 
 
     }
@@ -1410,22 +1421,7 @@ server <- function(input, output, session) {
 
       })
 
-   #  isolate({
 
-       # if ()
-       #  output$EUNonEUMessage <- renderText({
-       #    paste0("No ",input$EUNonEUSelect, " ",input$impexpSelect, " for selected query parameters.")
-       #  })
-        # Show a red notification warning the user that no data was found.
-      #   showNotification(paste0("No ",
-      #                           input$EUNonEUSelect,
-      #                           " ",
-      #                           input$impexpSelect,
-      #                           " for selected query parameters."
-      #                           ), type = "warning", duration = 0)
-      # })
-      # Break out of reactive chain
-     # req(FALSE)
     } else {
       observe({
       output$NoDataMessage <- NULL
@@ -1448,12 +1444,12 @@ server <- function(input, output, session) {
 
       # Create Links & Nodes dataframe.
 
-      link_portsum <- portsum
+ 
+          link_portsum <- portsum
       colnames(link_portsum) <- c("source","target","value")
       link_countrysum <- countrysum
       colnames(link_countrysum) <- c("source","target","value")
-
-
+      
       
       links <- bind_rows(link_portsum,link_countrysum)
       nodes <- data.frame(unique(c(links$source,links$target)),stringsAsFactors = FALSE)
@@ -1677,7 +1673,102 @@ server <- function(input, output, session) {
         select(-port) %>%
         rename(value = value.x, port = value.y)
 
+
+      
+      
+      # BAR CHART SPECIFIC ------------------------------------------------
+      
+      
+      # Select correct unit
+      if (input$unitSelect == "Price (GBP)"){
+        byComcodebc <- dataraw %>% select(month,comcode,price)
+        byCountrybc <- dataraw %>% select(month,country,price)
+        byPortbc <- dataraw %>% select(month,port,price)
+        
+      } else if (input$unitSelect == "Weight (KG)"){
+        byComcodebc <- dataraw %>% select(month,comcode,weight)
+        byCountrybc <- dataraw %>% select(month,country,weight)
+        byPortbc <- dataraw %>% select(month,port,weight)
+        
+      } else if (input$unitSelect == "Number of Consignments"){
+        byComcodebc <- dataraw %>% select(month,comcode,consignments)
+        byCountrybc <- dataraw %>% select(month,country,consignments)
+        byPortbc <- dataraw %>% select(month,port,consignments)
+        
+        
+      }
+      
+      # Special case for Price Per Kilo
+      if (input$unitSelect == "Price Per Kilo (GBP/KG)"){
+        if (input$dateSliderAll != TRUE) {
+          byComcodebc <- dataraw %>% filter(month == input$dateSlider)
+          byCountrybc <- dataraw %>% filter(month == input$dateSlider)
+          byPortbc <- dataraw %>% filter(month == input$dateSlider)
+        } else {
+          byComcodebc <- dataraw
+          byCountrybc <- dataraw
+          byPortbc <- dataraw
+        }
+        
+        byComcodebc <- byComcodebc %>%
+          select(comcode,price,weight) %>%
+          group_by(comcode) %>%
+          summarise(price = sum(price), weight = sum(weight)) %>%
+          mutate(value = price/weight) %>%
+          select(-c(price,weight))
+        byCountrybc <- byCountrybc %>%
+          select(country,price,weight) %>%
+          group_by(country) %>%
+          summarise(price = sum(price), weight = sum(weight)) %>%
+          mutate(value = price/weight) %>%
+          select(-c(price,weight))
+        byPortbc <- byPortbc %>%
+          select(port,price,weight) %>%
+          group_by(port) %>%
+          summarise(price = sum(price), weight = sum(weight)) %>%
+          mutate(value = price/weight) %>%
+          select(-c(price,weight))
+      } else {
+        # else statement required for non-PricePerKilo options
+        colnames(byComcodebc)[colnames(byComcodebc) %in% c("price","weight","consignments")] <- "value"
+        colnames(byCountrybc)[colnames(byCountrybc) %in% c("price","weight","consignments")] <- "value"
+        colnames(byPortbc)[colnames(byPortbc) %in% c("price","weight","consignments")] <- "value"
+        
+        if (input$dateSliderAll != TRUE){
+          byComcodebc <- byComcodebc %>% filter(month == input$dateSlider)
+          byCountrybc <- byCountrybc %>% filter(month == input$dateSlider)
+          byPortbc <- byPortbc %>% filter(month == input$dateSlider)
+        }
+        
+        # Obtain long format dataframe for time series plot
+        byComcodebc <- byComcodebc %>% group_by(comcode) %>% summarise(value = sum(value))
+        byCountrybc <- byCountrybc %>% group_by(country) %>% summarise(value = sum(value))
+        byPortbc <- byPortbc %>% group_by(port) %>% summarise(value = sum(value))
+      }
+      
+      # Ungroup the data frames.
+      byComcodebc <- ungroup(byComcodebc)
+      byCountrybc <- ungroup(byCountrybc)
+      byPortbc <- ungroup(byPortbc)
+      
+      # Replace country/port codes with full names.
+      byCountrybc <- byCountrybc %>%
+        left_join(desclookup, by = c("country" = "keyName")) %>%
+        select(-country) %>%
+        rename(value = value.x, country = value.y)
+      
+      byPortbc <- byPortbc %>%
+        left_join(desclookup, by = c("port" = "keyName")) %>%
+        select(-port) %>%
+        rename(value = value.x, port = value.y)
+      
+      
+      
+      
+      
+      
     # End Isolate
+      
     })
 
     # TRIGGER PLOT RENDERING ---------------------------------------------------
@@ -1695,7 +1786,11 @@ server <- function(input, output, session) {
     timeseriesData$byComcode <- byComcode
     timeseriesData$byCountry <- byCountry
     timeseriesData$byPort <- byPort
+    barchartData$byComcode <- byComcodebc
+    barchartData$byCountry <- byCountrybc
+    barchartData$byPort <- byPortbc
 
+    #testData$portsumtest <- portsum
 
   })
 
@@ -1714,11 +1809,16 @@ server <- function(input, output, session) {
                 columnDefs = list(list(width = "150px", targets = 0)))
     )}
   )
+  
+  
+  
+  
+
+  
 
   # Fill in the plots =========================================================
 
   # SANKEY --------------------------------------------------------------------
-
 
   # output$sankeyTrade <-  renderSankeyNetwork({
   output$sankeyTrade <- renderPlotly({
@@ -1750,6 +1850,16 @@ server <- function(input, output, session) {
       } else {
         suffix = ""
       }
+    
+    
+    if (input$unitSelect == "Price Per Kilo (GBP/KG)"){
+      linkhoversetting <- "all"
+      nodehoversetting <- "none"
+    } else {
+      linkhoversetting <- 'none'
+      nodehoversetting <- 'all'
+    }
+    
   
   plot_ly(
     type = "sankey",
@@ -1770,6 +1880,7 @@ server <- function(input, output, session) {
           color = "black",
           size = 18
       )),
+      hoverinfo = nodehoversetting,
       line = list(
         color = "black",
         width = 0.5
@@ -1780,7 +1891,15 @@ server <- function(input, output, session) {
       source = sankeyData$links$source,
       target = sankeyData$links$target,
       value =  sankeyData$links$value,
-      hoverinfo= "none"
+      hoverinfo = linkhoversetting,
+      hovertemplate='%{value}<extra></extra>',
+      hoverlabel = list(
+        bordercolor = "black",
+        bgcolor = "white",
+        font = list(
+          color = "black",
+          size = 18
+        ))
     )
   ) %>% layout(
     font = list(
@@ -1826,6 +1945,15 @@ server <- function(input, output, session) {
         suffix = ""
       }
   
+    
+    if (input$unitSelect == "Price Per Kilo (GBP/KG)"){
+      linkhoversetting <- "all"
+      nodehoversetting <- "none"
+    } else {
+      linkhoversetting <- 'none'
+      nodehoversetting <- 'all'
+    }
+    
   plot_ly(
     type = "sankey",
     orientation = "h",
@@ -1845,6 +1973,7 @@ server <- function(input, output, session) {
           color = "black",
           size = 18
       )),
+      hoverinfo = nodehoversetting,
       line = list(
         color = "black",
         width = 0.5
@@ -1855,7 +1984,15 @@ server <- function(input, output, session) {
       source = sankeyData$pclinks$source,
       target = sankeyData$pclinks$target,
       value =  sankeyData$pclinks$value,
-      hoverinfo= "none"
+      hoverinfo = linkhoversetting,
+      hovertemplate='%{value}<extra></extra>',
+      hoverlabel = list(
+        bordercolor = "black",
+        bgcolor = "white",
+        font = list(
+          color = "black",
+          size = 18
+        ))
     )
   ) %>% layout(
     font = list(
@@ -1896,6 +2033,17 @@ server <- function(input, output, session) {
         suffix = ""
       }
   
+    
+    if (input$unitSelect == "Price Per Kilo (GBP/KG)"){
+      linkhoversetting <- "all"
+      nodehoversetting <- "none"
+    } else {
+      linkhoversetting <- 'none'
+      nodehoversetting <- 'all'
+    }
+    
+    
+    
   plot_ly(
     type = "sankey",
     orientation = "h",
@@ -1915,6 +2063,7 @@ server <- function(input, output, session) {
           color = "black",
           size = 18
       )),
+      hoverinfo = nodehoversetting,
       line = list(
         color = "black",
         width = 0.5
@@ -1925,7 +2074,15 @@ server <- function(input, output, session) {
       source = sankeyData$cclinks$source,
       target = sankeyData$cclinks$target,
       value =  sankeyData$cclinks$value,
-      hoverinfo= "none"
+      hoverinfo = linkhoversetting,
+      hovertemplate='%{value}<extra></extra>',
+      hoverlabel = list(
+        bordercolor = "black",
+        bgcolor = "white",
+        font = list(
+          color = "black",
+          size = 18
+        ))
     )
   ) %>% layout(
     font = list(
@@ -2039,7 +2196,8 @@ server <- function(input, output, session) {
               color = "Commodity") +
                     theme_bw() +
                   theme(axis.text.x = element_text(angle=45, hjust=1)) +
-                  scale_y_continuous(labels = comma)
+                  scale_y_continuous(labels = comma) +
+           expand_limits(y=0)
        )
        
    })
@@ -2074,7 +2232,8 @@ server <- function(input, output, session) {
                color = "Country") +
           theme_bw() +
           theme(axis.text.x = element_text(angle=45, hjust=1)) +
-          scale_y_continuous(labels = comma) 
+          scale_y_continuous(labels = comma) +
+          expand_limits(y=0)
       )
       
   })
@@ -2104,11 +2263,87 @@ server <- function(input, output, session) {
              color = "Port") +
         theme_bw() +
         theme(axis.text.x = element_text(angle=45, hjust=1)) +
-        scale_y_continuous(labels = comma)
+        scale_y_continuous(labels = comma) +
+        expand_limits(y=0)
     )
     
     
   })
+  
+  
+  
+  
+  # BAR CHART ----------------------------------------------------------------
+  
+  output$bcByComcode <- renderPlotly({
+    
+
+    
+  ggplotly(
+    barchartData$byComcode %>%
+      ggplot(aes(x=reorder(comcode,value), y=value, fill=comcode), show.legend=FALSE) +
+      labs(x = paste("Commodity Code", " \n"),
+           y = paste(input$unitSelect)) +
+      geom_col() +
+      theme_bw() +
+      theme(axis.text.y = element_text(colour = "black", size = 12),
+            axis.text.x = element_text(colour = "black", size = 12),
+            legend.position = "none") +
+      scale_y_continuous(expand = expansion(mult = c(0,.1)), labels = comma) +
+      coord_flip(),
+    tooltip = c("comcode", "value")
+    )
+    
+
+    
+  })
+  
+  
+  
+  # 
+  output$bcByCountry <- renderPlotly({
+  
+
+  ggplotly(
+    barchartData$byCountry %>%
+      ggplot(aes(x=reorder(country,value), y=value, fill=country), show.legend=FALSE) +
+      labs(x = "",
+           y = paste(input$unitSelect)) +
+      geom_col() +
+      theme_bw() +
+      theme(axis.text.y = element_text(colour = "black", size = 12),
+            axis.text.x = element_text(colour = "black", size = 12),
+            legend.position = "none") +
+      scale_y_continuous(expand = expansion(mult = c(0,.1)), labels = comma) +
+      coord_flip(),
+    tooltip = c("country", "value")
+  )
+  
+  
+  })
+  
+  output$bcByPort <- renderPlotly({
+
+  ggplotly(
+    barchartData$byPort %>%
+      ggplot(aes(x=reorder(port,value), y=value, fill=port), show.legend=FALSE) +
+      labs(x = "",
+           y = paste(input$unitSelect)) +
+      geom_col() +
+      theme_bw() +
+      theme(axis.text.y = element_text(colour = "black", size = 12),
+            axis.text.x = element_text(colour = "black", size = 12),
+            legend.position = "none") +
+      scale_y_continuous(expand = expansion(mult = c(0,.1)), labels = comma) +
+      coord_flip(),
+    tooltip = c("port", "value")
+  )
+    
+    
+  })
+  
+  
+  
 
 
   # DATA DOWNLOAD ------------------------------------------------------------
